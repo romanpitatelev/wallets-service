@@ -1,4 +1,4 @@
-module go/projects/wallets-service
+module github.com/romanpitatelev/wallets-service
 
 go 1.22.2
 

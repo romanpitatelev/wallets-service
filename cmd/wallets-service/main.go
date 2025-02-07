@@ -1,7 +1,7 @@
 package main
 
 import (
-	"go/projects/wallets-service/internal/rest"
+	"github.com/romanpitatelev/wallets-service/internal/rest"
 
 	"github.com/rs/zerolog/log"
 )
