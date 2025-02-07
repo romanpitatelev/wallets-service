@@ -1,4 +1,4 @@
-module go/projects/go-wallet
+module go/projects/wallets-service
 
 go 1.22.2
 

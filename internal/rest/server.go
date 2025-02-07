@@ -3,7 +3,7 @@ package rest
 import (
 	"errors"
 	"fmt"
-	"go/projects/go-wallet/internal/time"
+	"go/projects/wallets-service/internal/time"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
