@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+
 	server, err := rest.New()
 	if err != nil {
 		log.Error().Msg("Failed to create new server")
@@ -16,5 +17,4 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 }

@@ -3,8 +3,9 @@ package rest
 import (
 	"errors"
 	"fmt"
-	"github.com/romanpitatelev/wallets-service/internal/time"
 	"net/http"
+
+	"github.com/romanpitatelev/wallets-service/internal/time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -31,7 +32,6 @@ func New() (*Server, error) {
 }
 
 func (s *Server) Run() error {
-
 	err := s.server.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("failed to start a server: %w", err)
