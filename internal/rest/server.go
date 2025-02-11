@@ -3,38 +3,42 @@ package rest
 import (
 	"errors"
 	"fmt"
-	"github.com/romanpitatelev/wallets-service/internal/time"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/romanpitatelev/wallets-service/internal/currtime"
+	"gorm.io/gorm"
 )
+
+const ReadHeaderTimeoutValue = 3
 
 type Server struct {
 	router *chi.Mux
 	server *http.Server
 }
 
-func New() (*Server, error) {
-
+func New(db *gorm.DB) (*Server, error) {
 	router := chi.NewRouter()
 	s := &Server{
 		router: router,
 		server: &http.Server{
-			Addr:    ":8081",
-			Handler: router,
+			Addr:              ":8081",
+			Handler:           router,
+			ReadHeaderTimeout: ReadHeaderTimeoutValue * time.Second,
 		},
 	}
 
-	time.NewTimeHandler(router)
+	currtime.NewTimeHandler(router, db)
 
 	return s, nil
 }
 
 func (s *Server) Run() error {
-
 	err := s.server.ListenAndServe()
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("failed to start a server: %w", err)
 	}
+
 	return nil
 }

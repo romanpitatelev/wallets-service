@@ -1,52 +1,35 @@
+linters-settings:
+  gocyclo:
+    min-complexity: 24
+  cyclop:
+    max-complexity: 24
+  forbidigo:
+    forbid:
+      - .*\.fatal,*
+      - fmt.Print.*
+  gci:
+    skip-generated: true
+  gofmt:
+    simplify: true
+  lll:
+    line-length: 160
+
+linters:
+  enable-all: true
+
+  disable:
+    - depguard
+    - exhaustruct
+    - exportloopref
+    - funlen
+    - ireturn
+    - tagalign
+    - varnamelen
+    - wastedassign
+
 run:
   timeout: 5m
   tests: false
-
-linters:
-  disable-all: true
-  enable:
-    - bodyclose
-    - canonicalheader
-    - dupword
-    - errcheck  # Forces to not skip error check. 
-    - errorlint # Suggests to use `%w` for error-wrapping.
-    - gci
-    - goconst
-    - gocyclo
-    - godot   # Check if comments end in a period.
-    - gofmt
-    - gofumpt
-    - goimports
-    - gosec   # Inspects source code for security problems.
-    - gosimple
-    - govet
-    - forbidigo
-    - ineffassign # Detects when assignments to existing variables are not used.
-    - misspell
-    - nestif
-    - nlreturn
-    - staticcheck
-    - unused
-
-linters-settings:
-  lll:
-    line-length: 120
-  nolintlint:
-    require-explanation: true
-    require-specific: true
-  forbidigo:
-    forbid:
-      - .*\fatal,*
-      - fmt.Print.*
-  nlreturn:
-    block-size: 8
-  
-issues:
-  exclude-rules:
-    - path: (_test\.go)
-      linters:
-        - gosec
-        - noctx # it's ok to do simple http request without context in tests
 
 output:
   formats:

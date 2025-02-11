@@ -1,13 +1,17 @@
 package main
 
 import (
+	"github.com/romanpitatelev/wallets-service/configs"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
-
+	"github.com/romanpitatelev/wallets-service/pkg/db"
 	"github.com/rs/zerolog/log"
 )
 
 func main() {
-	server, err := rest.New()
+	conf := configs.LoadConfig()
+	dbInstance := db.NewDb(conf)
+
+	server, err := rest.New(dbInstance.DB)
 	if err != nil {
 		log.Error().Msg("Failed to create new server")
 	}
@@ -16,5 +20,4 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 }
