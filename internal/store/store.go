@@ -1,31 +1,40 @@
 package store
 
-import "sync"
+import (
+	"github.com/romanpitatelev/wallets-service/internal/ip"
+	"gorm.io/gorm"
+)
 
 type VisitorStore struct {
-	mu     sync.RWMutex
-	visits map[string]int
+	db *gorm.DB
 }
 
-func NewVisitorStore() *VisitorStore {
+func NewVisitorStore(db *gorm.DB) *VisitorStore {
 	return &VisitorStore{
-		visits: make(map[string]int),
+		db: db,
 	}
 }
 
-func (v *VisitorStore) Add(ip string) {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-	v.visits[ip]++
+func (v *VisitorStore) Add(ipAddress string) {
+	var ipRecord ip.IP
+
+	v.db.FirstOrCreate(&ipRecord, ip.IP{
+		Address: ipAddress,
+	})
+
+	ipRecord.Count++
+	v.db.Save(&ipRecord)
 }
 
 func (v *VisitorStore) GetVisitsAll() map[string]int {
-	v.mu.RLock()
-	defer v.mu.RUnlock()
+	var ipRecords []ip.IP
 
-	visitsCopy := make(map[string]int)
-	for ip, count := range v.visits {
-		visitsCopy[ip] = count
+	v.db.Find(&ipRecords)
+
+	visits := make(map[string]int)
+	for _, record := range ipRecords {
+		visits[record.Address] = record.Count
 	}
-	return visitsCopy
+
+	return visits
 }
