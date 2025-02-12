@@ -1,13 +1,12 @@
 package main
 
 import (
+	"context"
 	"os"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
-	"github.com/romanpitatelev/wallets-service/internal/ip"
 	"github.com/rs/zerolog/log"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 func main() {
@@ -16,12 +15,17 @@ func main() {
 		panic(err)
 	}
 
-	db, err := gorm.Open(postgres.Open(os.Getenv("DSN")), &gorm.Config{})
+	pool, err := pgxpool.New(context.Background(), os.Getenv("DSN"))
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.AutoMigrate(&ip.IP{})
+	_, err = pool.Exec(context.Background(), `
+		CREATE TABLE IF NOT EXISTS IPS (
+			address TEXT PRIMARY KEY,
+			count INT 
+		)
+	`)
 	if err != nil {
 		log.Error().Msg("Automigration failure")
 	}

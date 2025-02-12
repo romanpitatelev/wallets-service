@@ -8,17 +8,17 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/romanpitatelev/wallets-service/internal/store"
 	"github.com/rs/zerolog/log"
-	"gorm.io/gorm"
 )
 
 type TimeHandler struct {
 	store *store.VisitorStore
 }
 
-func NewTimeHandler(router *chi.Mux, db *gorm.DB) {
-	visitorStore := store.NewVisitorStore(db)
+func NewTimeHandler(router *chi.Mux, pool *pgxpool.Pool) {
+	visitorStore := store.NewVisitorStore(pool)
 	handler := &TimeHandler{
 		store: visitorStore,
 	}

@@ -11,7 +11,7 @@ func main() {
 	conf := configs.LoadConfig()
 	dbInstance := db.NewDb(conf)
 
-	server, err := rest.New(dbInstance.DB)
+	server, err := rest.New(dbInstance.Pool)
 	if err != nil {
 		log.Error().Msg("Failed to create new server")
 	}

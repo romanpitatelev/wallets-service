@@ -1,39 +1,57 @@
 package store
 
 import (
+	"context"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/romanpitatelev/wallets-service/internal/ip"
-	"gorm.io/gorm"
 )
 
 type VisitorStore struct {
-	db *gorm.DB
+	pool *pgxpool.Pool
 }
 
-func NewVisitorStore(db *gorm.DB) *VisitorStore {
+func NewVisitorStore(pool *pgxpool.Pool) *VisitorStore {
 	return &VisitorStore{
-		db: db,
+		pool: pool,
 	}
 }
 
 func (v *VisitorStore) Add(ipAddress string) {
+	ctx := context.Background()
+
 	var ipRecord ip.IP
 
-	v.db.FirstOrCreate(&ipRecord, ip.IP{
-		Address: ipAddress,
-	})
-
-	ipRecord.Count++
-	v.db.Save(&ipRecord)
+	err := v.pool.QueryRow(ctx,
+		`INSERT INTO ips (address, count) 
+		VALUES ($1, $2) 
+		ON CONFLICT (address) 
+		DO UPDATE SET count = ips.count + 1 
+		RETURNING address, count`,
+		ipAddress, 1).Scan(&ipRecord.Address, &ipRecord.Count)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (v *VisitorStore) GetVisitsAll() map[string]int {
-	var ipRecords []ip.IP
-
-	v.db.Find(&ipRecords)
+	ctx := context.Background()
+	rows, err := v.pool.Query(ctx, "SELECT address, count FROM ips")
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
 
 	visits := make(map[string]int)
-	for _, record := range ipRecords {
-		visits[record.Address] = record.Count
+
+	for rows.Next() {
+		var ipRecord ip.IP
+		err = rows.Scan(&ipRecord.Address, &ipRecord.Count)
+		if err != nil {
+			panic(err)
+		}
+
+		visits[ipRecord.Address] = ipRecord.Count
 	}
 
 	return visits

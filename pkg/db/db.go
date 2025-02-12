@@ -1,20 +1,21 @@
 package db
 
 import (
+	"context"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/romanpitatelev/wallets-service/configs"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 type Db struct {
-	*gorm.DB
+	Pool *pgxpool.Pool
 }
 
 func NewDb(conf *configs.Config) *Db {
-	db, err := gorm.Open(postgres.Open(conf.Db.Dsn), &gorm.Config{})
+	pool, err := pgxpool.New(context.Background(), conf.Db.Dsn)
 	if err != nil {
 		panic(err)
 	}
 
-	return &Db{db}
+	return &Db{Pool: pool}
 }

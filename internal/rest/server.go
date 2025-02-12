@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/romanpitatelev/wallets-service/internal/currtime"
-	"gorm.io/gorm"
 )
 
 const ReadHeaderTimeoutValue = 3
@@ -18,7 +18,7 @@ type Server struct {
 	server *http.Server
 }
 
-func New(db *gorm.DB) (*Server, error) {
+func New(pool *pgxpool.Pool) (*Server, error) {
 	router := chi.NewRouter()
 	s := &Server{
 		router: router,
@@ -29,7 +29,7 @@ func New(db *gorm.DB) (*Server, error) {
 		},
 	}
 
-	currtime.NewTimeHandler(router, db)
+	currtime.NewTimeHandler(router, pool)
 
 	return s, nil
 }
