@@ -1,23 +1,32 @@
 package main
 
 import (
-	"github.com/romanpitatelev/wallets-service/configs"
+	"context"
+	"github.com/romanpitatelev/wallets-service/internal/configs"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
-	"github.com/romanpitatelev/wallets-service/pkg/db"
+	"github.com/romanpitatelev/wallets-service/internal/service"
+	"github.com/romanpitatelev/wallets-service/internal/store"
 	"github.com/rs/zerolog/log"
 )
 
 func main() {
-	conf := configs.LoadConfig()
-	dbInstance := db.NewDb(conf)
+	ctx := context.Background()
 
-	server, err := rest.New(dbInstance.Pool)
+	conf := configs.LoadConfig()
+
+	pgStore, err := store.New(ctx, conf)
 	if err != nil {
-		log.Error().Msg("Failed to create new server")
+		log.Panic().Err(err).Msg("failed to connect to database")
 	}
 
-	err = server.Run()
+	svc := service.New(pgStore)
+
+	server, err := rest.New(svc)
 	if err != nil {
-		panic(err)
+		log.Panic().Err(err).Msg("Failed to create new server")
+	}
+
+	if err = server.Run(); err != nil {
+		log.Panic().Err(err).Msg("Failed to start server")
 	}
 }

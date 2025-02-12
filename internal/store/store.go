@@ -2,25 +2,30 @@ package store
 
 import (
 	"context"
+	"fmt"
+	"github.com/romanpitatelev/wallets-service/internal/configs"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/romanpitatelev/wallets-service/internal/ip"
+	"github.com/romanpitatelev/wallets-service/internal/model"
 )
 
 type VisitorStore struct {
 	pool *pgxpool.Pool
 }
 
-func NewVisitorStore(pool *pgxpool.Pool) *VisitorStore {
+func New(ctx context.Context, conf *configs.Config) (*VisitorStore, error) {
+	pool, err := pgxpool.New(ctx, conf.DB.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("could not connect to database: %w", err)
+	}
+
 	return &VisitorStore{
 		pool: pool,
-	}
+	}, nil
 }
 
-func (v *VisitorStore) Add(ipAddress string) {
-	ctx := context.Background()
-
-	var ipRecord ip.IP
+func (v *VisitorStore) Add(ctx context.Context, ipAddress string) error {
+	var ipRecord model.IP
 
 	err := v.pool.QueryRow(ctx,
 		`INSERT INTO ips (address, count) 
@@ -30,29 +35,34 @@ func (v *VisitorStore) Add(ipAddress string) {
 		RETURNING address, count`,
 		ipAddress, 1).Scan(&ipRecord.Address, &ipRecord.Count)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to add ip: %w", err)
 	}
+
+	return nil
 }
 
-func (v *VisitorStore) GetVisitsAll() map[string]int {
-	ctx := context.Background()
-	rows, err := v.pool.Query(ctx, "SELECT address, count FROM ips")
+func (v *VisitorStore) GetVisitsAll(ctx context.Context) (map[string]int, error) {
+	rows, err := v.pool.Query(ctx, `SELECT address, count FROM ips`)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to query visits: %w", err)
 	}
 	defer rows.Close()
 
 	visits := make(map[string]int)
 
 	for rows.Next() {
-		var ipRecord ip.IP
-		err = rows.Scan(&ipRecord.Address, &ipRecord.Count)
-		if err != nil {
-			panic(err)
+		var ipRecord model.IP
+
+		if err = rows.Scan(&ipRecord.Address, &ipRecord.Count); err != nil {
+			return nil, fmt.Errorf("failed to scan visits: %w", err)
 		}
 
 		visits[ipRecord.Address] = ipRecord.Count
 	}
 
-	return visits
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate visits: %w", err)
+	}
+
+	return visits, nil
 }

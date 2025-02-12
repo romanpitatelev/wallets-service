@@ -8,22 +8,21 @@ import (
 )
 
 type Config struct {
-	Db DbConfig
+	DB DBConfig
 }
 
-type DbConfig struct {
-	Dsn string
+type DBConfig struct {
+	DSN string
 }
 
 func LoadConfig() *Config {
-	err := godotenv.Load()
-	if err != nil {
+	if err := godotenv.Load(); err != nil {
 		log.Error().Msg("Error loading .env file, using default config")
 	}
 
 	return &Config{
-		Db: DbConfig{
-			Dsn: os.Getenv("DSN"),
+		DB: DBConfig{
+			DSN: os.Getenv("DSN"),
 		},
 	}
 }
