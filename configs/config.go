@@ -8,22 +8,30 @@ import (
 )
 
 type Config struct {
-	DB DBConfig
+	BindAddress      string
+	PostgresHost     string
+	PostgresPort     string
+	PostgresDatabase string
+	PostgresUser     string
+	PostgresPassword string
 }
 
-type DBConfig struct {
-	DSN string
-}
-
-func LoadConfig() *Config {
-	err := godotenv.Load()
+func NewConfig() *Config {
+	err := godotenv.Load("example.env")
 	if err != nil {
-		log.Error().Msg("Error loading .env file, using default config")
+		log.Panic().Msg("Error loading example.env file")
 	}
 
-	return &Config{
-		DB: DBConfig{
-			DSN: os.Getenv("DSN"),
-		},
+	log.Debug().Msg("Environment variables loaded")
+
+	config := &Config{
+		BindAddress:      os.Getenv("BIND_ADDRES"),
+		PostgresHost:     os.Getenv("POSTGRES_HOST"),
+		PostgresPort:     os.Getenv("POSTGRES_PORT"),
+		PostgresDatabase: os.Getenv("POSTGRES_DATABASE"),
+		PostgresUser:     os.Getenv("POSTGRES_USER"),
+		PostgresPassword: os.Getenv("POSTGRES_PASSWORD"),
 	}
+
+	return config
 }
