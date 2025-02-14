@@ -20,11 +20,10 @@ linters:
   disable:
     - depguard
     - exhaustruct
-    - funlen
     - ireturn
     - tagalign
+    - tenv
     - varnamelen
-    - wastedassign
   
 run:
   timeout: 5m
