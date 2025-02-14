@@ -1,27 +1,31 @@
 package rest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/romanpitatelev/wallets-service/internal/currtime"
-	"gorm.io/gorm"
 )
 
 const ReadHeaderTimeoutValue = 3
 
 type Server struct {
-	router *chi.Mux
-	server *http.Server
+	server  *http.Server
+	service service
 }
 
-func New(db *gorm.DB) (*Server, error) {
+type service interface {
+	Add(ctx context.Context, ipAddress string) (time.Time, error)
+	GetVisitsAll(ctx context.Context) (map[string]int, error)
+}
+
+func New(service service) (*Server, error) {
 	router := chi.NewRouter()
 	s := &Server{
-		router: router,
+		service: service,
 		server: &http.Server{
 			Addr:              ":8081",
 			Handler:           router,
@@ -29,7 +33,8 @@ func New(db *gorm.DB) (*Server, error) {
 		},
 	}
 
-	currtime.NewTimeHandler(router, db)
+	router.Get("/time", s.TimeNow)
+	router.Get("/visitors", s.GetVisitors)
 
 	return s, nil
 }

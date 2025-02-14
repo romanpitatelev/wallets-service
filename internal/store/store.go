@@ -1,40 +1,65 @@
 package store
 
 import (
-	"github.com/romanpitatelev/wallets-service/internal/ip"
-	"gorm.io/gorm"
+	"context"
+	"fmt"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/romanpitatelev/wallets-service/configs"
+	ip "github.com/romanpitatelev/wallets-service/internal/model"
 )
 
 type VisitorStore struct {
-	db *gorm.DB
+	pool *pgxpool.Pool
 }
 
-func NewVisitorStore(db *gorm.DB) *VisitorStore {
-	return &VisitorStore{
-		db: db,
+func New(ctx context.Context, conf *configs.Config) (*VisitorStore, error) {
+	pool, err := pgxpool.New(ctx, conf.DB.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("could not connect to database: %w", err)
 	}
+
+	return &VisitorStore{
+		pool: pool,
+	}, nil
 }
 
-func (v *VisitorStore) Add(ipAddress string) {
+func (v *VisitorStore) Add(ctx context.Context, ipAddress string) error {
 	var ipRecord ip.IP
 
-	v.db.FirstOrCreate(&ipRecord, ip.IP{
-		Address: ipAddress,
-	})
-
-	ipRecord.Count++
-	v.db.Save(&ipRecord)
-}
-
-func (v *VisitorStore) GetVisitsAll() map[string]int {
-	var ipRecords []ip.IP
-
-	v.db.Find(&ipRecords)
-
-	visits := make(map[string]int)
-	for _, record := range ipRecords {
-		visits[record.Address] = record.Count
+	err := v.pool.QueryRow(ctx,
+		`INSERT INTO ips (address, count) 
+		VALUES ($1, $2) 
+		ON CONFLICT (address) 
+		DO UPDATE SET count = ips.count + 1 
+		RETURNING address, count`,
+		ipAddress, 1).Scan(&ipRecord.Address, &ipRecord.Count)
+	if err != nil {
+		return fmt.Errorf("failed to add ip: %w", err)
 	}
 
-	return visits
+	return nil
+}
+
+func (v *VisitorStore) GetVisitsAll(ctx context.Context) (map[string]int, error) {
+	rows, err := v.pool.Query(ctx, "SELECT address, count FROM ips")
+	if err != nil {
+		return nil, fmt.Errorf("failed to quesry visits: %w", err)
+	}
+	defer rows.Close()
+
+	visits := make(map[string]int)
+
+	for rows.Next() {
+		var ipRecord ip.IP
+
+		err = rows.Scan(&ipRecord.Address, &ipRecord.Count)
+		if err != nil {
+			return nil, fmt.Errorf("failed to iterate visits: %w", err)
+		}
+
+		visits[ipRecord.Address] = ipRecord.Count
+	}
+
+	return visits, nil
 }
