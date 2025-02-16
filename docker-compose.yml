@@ -5,8 +5,12 @@ services:
     environment: 
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: my_pass
-      PGDATA: /data/postgres
+      POSTGRES_DB: wallets_db
+      PGDATA: /var/lib/postresql/data/pgdata
     volumes:
-      - ./postgres-data:data/postgres
+      - ./postgres-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+
+volumes:
+  postgres-data:

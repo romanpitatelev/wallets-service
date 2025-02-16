@@ -25,7 +25,7 @@ func (s *Server) TimeNow(w http.ResponseWriter, r *http.Request) {
 
 	_, err = w.Write([]byte(fmt.Sprint("Current date and time: ", timeCurr.Format(dateTimeFmt))))
 	if err != nil {
-		log.Error().Msg("Write failed")
+		log.Error().Err(err).Msg("Write failed")
 	}
 }
 
