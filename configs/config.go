@@ -25,13 +25,15 @@ func NewConfig() *Config {
 	log.Debug().Msg("Environment variables loaded")
 
 	config := &Config{
-		BindAddress:      os.Getenv("BIND_ADDRES"),
+		BindAddress:      os.Getenv("BIND_ADDRESS"),
 		PostgresHost:     os.Getenv("POSTGRES_HOST"),
 		PostgresPort:     os.Getenv("POSTGRES_PORT"),
 		PostgresDatabase: os.Getenv("POSTGRES_DATABASE"),
 		PostgresUser:     os.Getenv("POSTGRES_USER"),
 		PostgresPassword: os.Getenv("POSTGRES_PASSWORD"),
 	}
+
+	log.Debug().Msg("Loaded configuration")
 
 	return config
 }

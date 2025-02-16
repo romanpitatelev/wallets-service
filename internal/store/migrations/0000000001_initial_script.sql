@@ -1,12 +1,12 @@
 -- +migrate Up
 
 CREATE TABLE ips (
-    id UUID PRIMARY KEY,
-    ipaddress VARCHAR,
-    count NUMERIC,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP,
-    deleted BOOL NOT NULL
+    id SERIAL PRIMARY KEY,
+    ipaddress VARCHAR UNIQUE,
+    count NUMERIC
 );
 
-CREATE INDEX idx_ips ON ips (ipaddress)
+CREATE INDEX idx_ips ON ips (ipaddress);
+
+-- +migrate Down
+DROP TABLE ips;
