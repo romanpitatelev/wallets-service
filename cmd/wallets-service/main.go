@@ -27,6 +27,17 @@ func main() {
 
 	log.Info().Msg("successful migration")
 
+	kafkaConsumer, err := consumer.New(pgStore)
+	if err != nil {
+		log.Panic().Err(err).Msg("failed to connect to initiante kafka consumer")
+	}
+
+	defer func() {
+		if err = kafkaConsumer.Close(); err != nil {
+			log.Panic().Err(err).Msg("failed to close kafka consumer")
+		}
+	}()
+
 	svc := service.New(pgStore)
 
 	server, err := rest.New(svc)
