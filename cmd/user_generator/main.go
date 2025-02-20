@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	timeInterval           = 1
+	timeInterval           = time.Second
 	numberOfDifferentUsers = 1000
 	topic                  = "users"
 	ageMin                 = 15
@@ -41,9 +41,7 @@ func main() {
 
 	producer, err := newKafkaProducer([]string{kafkaProducer})
 	if err != nil {
-		log.Error().Err(err).Msg("failed to create sync producer")
-
-		return
+		log.Panic().Err(err).Msg("failed to create sync producer")
 	}
 
 	defer func() {
@@ -54,30 +52,26 @@ func main() {
 
 	users := generateUsers(numberOfDifferentUsers)
 
-	for {
-		user, err := getRandomUser(users)
-		if err != nil {
-			log.Panic().Err(err).Msg("failed to get random user")
-		}
-
+	for user := range users {
 		if err := sendUserToKafka(producer, topic, user); err != nil {
 			log.Panic().Err(err).Msg("failed to send user to kafka")
 		}
 
 		log.Info().Msg("message sent")
-		time.Sleep(timeInterval * time.Second)
+		time.Sleep(timeInterval)
 	}
 }
 
-func generateUsers(count int) []User {
-	users := make([]User, count)
+func generateUsers(count int) chan User {
+	ch := make(chan User)
 
-	for i := range count {
-		newUser := generateUser()
-		users[i] = newUser
-	}
+	go func() {
+		for range count {
+			ch <- generateUser()
+		}
+	}()
 
-	return users
+	return ch
 }
 
 func generateUser() User {
@@ -105,7 +99,7 @@ func generateUser() User {
 		log.Error().Err(err).Msg("error generating random user ID")
 	}
 
-	deleted, err := randonDeleted()
+	deleted, err := randomDeleted()
 	if err != nil {
 		log.Error().Err(err).Msg("error generating deleted value for user")
 	}
@@ -150,15 +144,6 @@ func generateAge(minVal, maxVal int) (int, error) {
 	return minVal + int(randomBigInt.Int64()), nil
 }
 
-func getRandomUser(users []User) (User, error) {
-	index, err := rand.Int(rand.Reader, big.NewInt(int64(len(users))))
-	if err != nil {
-		return User{}, fmt.Errorf("random user selection error: %w", err)
-	}
-
-	return users[int(index.Int64())], nil
-}
-
 func newKafkaProducer(brokers []string) (sarama.SyncProducer, error) {
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
@@ -182,15 +167,14 @@ func sendUserToKafka(producer sarama.SyncProducer, topic string, user User) erro
 		Value: sarama.StringEncoder(bytes),
 	}
 
-	_, _, err = producer.SendMessage(message)
-	if err != nil {
+	if _, _, err = producer.SendMessage(message); err != nil {
 		return fmt.Errorf("error sending message to Kafka: %w", err)
 	}
 
 	return nil
 }
 
-func randonDeleted() (bool, error) {
+func randomDeleted() (bool, error) {
 	randNum, err := rand.Int(rand.Reader, big.NewInt(int64(deletedRandNum)))
 	if err != nil {
 		return false, fmt.Errorf("random number generation error when creating metric called deleted: %w", err)

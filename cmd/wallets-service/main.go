@@ -2,6 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"golang.org/x/sync/errgroup"
+	"os/signal"
+	"syscall"
 
 	"github.com/romanpitatelev/wallets-service/configs"
 	"github.com/romanpitatelev/wallets-service/internal/consumer"
@@ -13,7 +17,8 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
 
 	conf := configs.NewConfig()
 
@@ -35,16 +40,6 @@ func main() {
 
 	log.Trace().Msg("kafka consumer created")
 
-	defer func() {
-		if err = kafkaConsumer.Close(); err != nil {
-			log.Panic().Err(err).Msg("failed to close kafka consumer")
-		}
-	}()
-
-	if err = kafkaConsumer.Run(ctx); err != nil {
-		log.Panic().Err(err).Msg("failed to run kafka consumer")
-	}
-
 	svc := service.New(pgStore)
 
 	server, err := rest.New(svc)
@@ -52,8 +47,25 @@ func main() {
 		log.Panic().Msg("Failed to create new server")
 	}
 
-	err = server.Run()
-	if err != nil {
-		log.Panic().Msg("Failed to run the server")
+	errGr, ctx := errgroup.WithContext(ctx)
+
+	errGr.Go(func() error {
+		if err := kafkaConsumer.Run(ctx); err != nil {
+			return fmt.Errorf("failed to run kafka consumer: %w", err)
+		}
+
+		return nil
+	})
+
+	errGr.Go(func() error {
+		if err := server.Run(ctx); err != nil {
+			return fmt.Errorf("failed to run the server: %w", err)
+		}
+
+		return nil
+	})
+
+	if err = errGr.Wait(); err != nil {
+		log.Panic().Err(err).Msg("failed to run the server")
 	}
 }
