@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // functions from this package are not used
 	"github.com/romanpitatelev/wallets-service/configs"
-	ip "github.com/romanpitatelev/wallets-service/internal/model"
+	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/rs/zerolog/log"
 	migrate "github.com/rubenv/sql-migrate"
 )
@@ -17,12 +17,12 @@ import (
 //go:embed migrations
 var migrations embed.FS
 
-type VisitorStore struct {
+type DataStore struct {
 	pool *pgxpool.Pool
 	dsn  string
 }
 
-func New(ctx context.Context, conf *configs.Config) (*VisitorStore, error) {
+func New(ctx context.Context, conf *configs.Config) (*DataStore, error) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
 		conf.PostgresHost,
 		conf.PostgresUser,
@@ -38,14 +38,14 @@ func New(ctx context.Context, conf *configs.Config) (*VisitorStore, error) {
 
 	log.Debug().Msg("connection to db successful")
 
-	return &VisitorStore{
+	return &DataStore{
 		pool: pool,
 		dsn:  dsn,
 	}, nil
 }
 
-func (v *VisitorStore) Migrate(direction migrate.MigrationDirection) error {
-	conn, err := sql.Open("pgx", v.dsn)
+func (d *DataStore) Migrate(direction migrate.MigrationDirection) error {
+	conn, err := sql.Open("pgx", d.dsn)
 	if err != nil {
 		return fmt.Errorf("failed to open sql: %w", err)
 	}
@@ -96,10 +96,10 @@ func (v *VisitorStore) Migrate(direction migrate.MigrationDirection) error {
 	return nil
 }
 
-func (v *VisitorStore) Add(ctx context.Context, ipAddress string) error {
-	var ipRecord ip.IP
+func (d *DataStore) Add(ctx context.Context, ipAddress string) error {
+	var ipRecord models.IP
 
-	err := v.pool.QueryRow(ctx,
+	err := d.pool.QueryRow(ctx,
 		`INSERT INTO ips (ipaddress, count) 
 		VALUES ($1, $2) 
 		ON CONFLICT (ipaddress) 
@@ -113,8 +113,8 @@ func (v *VisitorStore) Add(ctx context.Context, ipAddress string) error {
 	return nil
 }
 
-func (v *VisitorStore) GetVisitsAll(ctx context.Context) (map[string]int, error) {
-	rows, err := v.pool.Query(ctx, "SELECT ipaddress, count FROM ips")
+func (d *DataStore) GetVisitsAll(ctx context.Context) (map[string]int, error) {
+	rows, err := d.pool.Query(ctx, "SELECT ipaddress, count FROM ips")
 	if err != nil {
 		return nil, fmt.Errorf("failed to query visits: %w", err)
 	}
@@ -123,7 +123,7 @@ func (v *VisitorStore) GetVisitsAll(ctx context.Context) (map[string]int, error)
 	visits := make(map[string]int)
 
 	for rows.Next() {
-		var ipRecord ip.IP
+		var ipRecord models.IP
 
 		err = rows.Scan(&ipRecord.Address, &ipRecord.Count)
 		if err != nil {
@@ -134,4 +134,19 @@ func (v *VisitorStore) GetVisitsAll(ctx context.Context) (map[string]int, error)
 	}
 
 	return visits, nil
+}
+
+func (d *DataStore) UpsertUser(ctx context.Context, users models.User) error {
+	query := `INSERT INTO users (userid, deleted)
+		VALUES ($1, $2)
+		ON CONFLICT (userid) 
+		DO UPDATE SET deleted = excluded.deleted
+		RETURNING userid, deleted`
+
+	_, err := d.pool.Exec(ctx, query, users.UserID, users.Deleted)
+	if err != nil {
+		return fmt.Errorf("failed to upsert users: %w", err)
+	}
+
+	return nil
 }

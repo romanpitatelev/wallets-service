@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/romanpitatelev/wallets-service/configs"
+	"github.com/romanpitatelev/wallets-service/internal/consumer"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
@@ -29,14 +30,20 @@ func main() {
 
 	kafkaConsumer, err := consumer.New(pgStore)
 	if err != nil {
-		log.Panic().Err(err).Msg("failed to connect to initiante kafka consumer")
+		log.Panic().Err(err).Msg("failed to create kafka consumer")
 	}
+
+	log.Trace().Msg("kafka consumer created")
 
 	defer func() {
 		if err = kafkaConsumer.Close(); err != nil {
 			log.Panic().Err(err).Msg("failed to close kafka consumer")
 		}
 	}()
+
+	if err = kafkaConsumer.Run(ctx); err != nil {
+		log.Panic().Err(err).Msg("failed to run kafka consumer")
+	}
 
 	svc := service.New(pgStore)
 
