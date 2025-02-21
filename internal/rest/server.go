@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/log"
 )
 
 const ReadHeaderTimeoutValue = 3
@@ -39,9 +40,16 @@ func New(service service) (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Run() error {
-	err := s.server.ListenAndServe()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+func (s *Server) Run(ctx context.Context) error {
+	go func() {
+		<-ctx.Done()
+
+		if err := s.server.Shutdown(ctx); err != nil {
+			log.Warn().Err(err).Msg("failed to shutdown server")
+		}
+	}()
+
+	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("failed to start a server: %w", err)
 	}
 
