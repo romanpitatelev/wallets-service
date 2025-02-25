@@ -3,37 +3,74 @@ package service
 import (
 	"context"
 	"fmt"
-	"time"
+
+	"github.com/google/uuid"
+	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/rs/zerolog/log"
 )
 
-type addrStore interface {
-	Add(ctx context.Context, ipAddress string) error
-	GetVisitsAll(ctx context.Context) (map[string]int, error)
+type walletStore interface {
+	CreateWallet(ctx context.Context, wallet models.Wallet) error
+	GetWallet(ctx context.Context, walletID uuid.UUID) (*models.Wallet, error)
+	UpdateWallet(ctx context.Context, wallet models.Wallet) error
+	DeleteWallet(ctx context.Context, walletID uuid.UUID) error
+	GetWallets(ctx context.Context, userID uuid.UUID) ([]models.Wallet, error)
 }
 
 type Service struct {
-	addrStore addrStore
+	walletStore walletStore
 }
 
-func New(addrStore addrStore) *Service {
+func New(walletStore walletStore) *Service {
 	return &Service{
-		addrStore: addrStore,
+		walletStore: walletStore,
 	}
 }
 
-func (s *Service) Add(ctx context.Context, ipAddress string) (time.Time, error) {
-	if err := s.addrStore.Add(ctx, ipAddress); err != nil {
-		return time.Time{}, fmt.Errorf("failed to add ip address: %w", err)
+func (s *Service) CreateWallet(ctx context.Context, wallet models.Wallet) error {
+	log.Info().Str("walletID", wallet.WalletID.String()).Msg("Creating wallet")
+
+	if err := s.walletStore.CreateWallet(ctx, wallet); err != nil {
+		return fmt.Errorf("failed to create wallet: %w", err)
 	}
 
-	return time.Now(), nil
+	return nil
 }
 
-func (s *Service) GetVisitsAll(ctx context.Context) (map[string]int, error) {
-	m, err := s.addrStore.GetVisitsAll(ctx)
+func (s *Service) GetWallet(ctx context.Context, walletID uuid.UUID) (*models.Wallet, error) {
+	wallet, err := s.walletStore.GetWallet(ctx, walletID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get visits all: %w", err)
+		return nil, fmt.Errorf("failed to get wallet: %w", err)
 	}
 
-	return m, nil
+	return wallet, nil
+}
+
+func (s *Service) UpdateWallet(ctx context.Context, wallet models.Wallet) error {
+	log.Info().Str("walletID", wallet.WalletID.String()).Msg("Updating wallet")
+
+	if err := s.walletStore.UpdateWallet(ctx, wallet); err != nil {
+		return fmt.Errorf("failed to update wallet: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) DeleteWallet(ctx context.Context, walletID uuid.UUID) error {
+	log.Info().Str("walletID", walletID.String()).Msg("Deleting wallet")
+
+	if err := s.walletStore.DeleteWallet(ctx, walletID); err != nil {
+		return fmt.Errorf("failed to delete: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) GetAllWallets(ctx context.Context, userID uuid.UUID) ([]models.Wallet, error) {
+	wallets, err := s.walletStore.GetWallets(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting wallets info: %w", err)
+	}
+
+	return wallets, nil
 }
