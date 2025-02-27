@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	_ "github.com/jackc/pgx/v5/stdlib" // functions from this package are not used
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/romanpitatelev/wallets-service/configs"
 	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/rs/zerolog/log"
@@ -119,7 +119,7 @@ func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet) erro
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING walletId, walletName, balance, currency, createdAt, updatedAt, deletedAt`
 
-	_, err := d.pool.Exec(ctx, query,
+	row := d.pool.QueryRow(ctx, query,
 		wallet.WalletID,
 		wallet.WalletName,
 		wallet.Balance,
@@ -128,7 +128,8 @@ func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet) erro
 		wallet.UpdatedAt,
 		wallet.DeletedAt,
 	)
-	if err != nil {
+	// TODO do properly
+	if err := row.Scan(&wallet); err != nil {
 		return fmt.Errorf("failed to create wallet: %w", err)
 	}
 

@@ -13,6 +13,7 @@ import (
 
 func (s *Server) CreateWallet(w http.ResponseWriter, r *http.Request) {
 	var wallet models.Wallet
+
 	if err := json.NewDecoder(r.Body).Decode(&wallet); err != nil {
 		log.Error().Err(err).Msg("failed to decode r.Body in CreateWallet")
 		http.Error(w, "error", http.StatusBadRequest)
@@ -21,12 +22,19 @@ func (s *Server) CreateWallet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	wallet.WalletID = uuid.New()
+	wallet.Balance = 0
 
-	if err := s.service.CreateWallet(r.Context(), wallet); err != nil {
+	wallet, err := s.service.CreateWallet(r.Context(), wallet)
+	if err != nil {
 		log.Error().Err(err).Msg("failed to create wallet")
+
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
+	if err = json.NewEncoder(w).Encode(wallet); err != nil {
+		log.Error().Err(err).Msg("failed to encode response")
+	}
 }
 
 func (s *Server) GetWallet(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +84,7 @@ func (s *Server) UpdateWallet(w http.ResponseWriter, r *http.Request) {
 
 	wallet.WalletID = walletID
 	wallet.UpdatedAt = time.Now()
+	wallet.Balance = 0
 
 	if err := s.service.UpdateWallet(r.Context(), wallet); err != nil {
 		log.Error().Err(err).Msg("failed to update wallet")

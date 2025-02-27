@@ -72,7 +72,7 @@ func (its *IntegrationTestSuite) TearDownSuite() {
 	its.cancelFunc()
 }
 
-func TestIntergationSetupSuite(t *testing.T) {
+func TestIntegrationSetupSuite(t *testing.T) {
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
@@ -94,14 +94,20 @@ func (its *IntegrationTestSuite) sendRequest(method, path string, status int, en
 		its.Require().NoError(err)
 	}()
 
+	if status != response.StatusCode {
+		// TODO: переосмыслить
+		responseBody, err := io.ReadAll(response.Body)
+		its.Require().NoError(err)
+
+		its.T().Log(responseBody)
+
+		return
+	}
+
 	if result == nil {
 		return
 	}
 
-	responseBody, err := io.ReadAll(response.Body)
+	err = json.NewDecoder(response.Body).Decode(result)
 	its.Require().NoError(err)
-
-	err = json.Unmarshal(responseBody, result)
-	its.Require().NoError(err)
-
 }

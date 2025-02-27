@@ -12,53 +12,34 @@ import (
 func (its *IntegrationTestSuite) TestCreateWallet() {
 
 	wallet := models.Wallet{
-		WalletID:   uuid.New(),
 		UserID:     uuid.New(),
 		WalletName: "testWalletPost",
-		Balance:    100.0,
 		Currency:   "RSD",
-		CreatedAt:  time.Now(),
 	}
 
+	var createdWallet models.Wallet
+
 	its.Run("created successfully", func() {
-		createdWallet := models.Wallet{}
 
 		its.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &wallet, &createdWallet)
 
 		its.Require().Equal(wallet.WalletID, createdWallet.WalletID)
 		its.Require().Equal(wallet.WalletName, createdWallet.WalletName)
-		its.Require().Equal(wallet.Balance, createdWallet.Balance)
+		its.Require().Equal(0, createdWallet.Balance)
 		its.Require().Equal(wallet.Currency, createdWallet.Currency)
-		its.Require().Equal(wallet.CreatedAt, createdWallet.CreatedAt)
+		its.Require().True(createdWallet.CreatedAt.After(time.Now().Add(time.Second)))
 	})
-}
 
-func (its *IntegrationTestSuite) TestGetWallet() {
-	wallet := models.Wallet{
-		WalletID:   uuid.New(),
-		UserID:     uuid.New(),
-		WalletName: "testWalletGet",
-		Balance:    200.0,
-		Currency:   "CHF",
-		CreatedAt:  time.Now(),
-	}
-
-	createdWallet := models.Wallet{}
-
-	its.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &wallet, &createdWallet)
+	its.sendRequest(http.MethodGet, walletPath, http.StatusOK, nil, &wallet)
 
 	its.Run("get wallet successful", func() {
-		uuidString := uuid.UUID(createdWallet.WalletID).String()
-		walletIDPath := walletPath + "/" + uuidString
+		walletIDPath := walletPath + "/" + createdWallet.WalletID.String()
 
 		its.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdWallet)
 
-		its.Require().Equal(wallet.WalletID, createdWallet.WalletID)
 		its.Require().Equal(wallet.WalletName, createdWallet.WalletName)
-		its.Require().Equal(wallet.Balance, createdWallet.Balance)
+		its.Require().Equal(0, createdWallet.Balance)
 		its.Require().Equal(wallet.Currency, createdWallet.Currency)
-		its.Require().Equal(wallet.CreatedAt, createdWallet.CreatedAt)
-
 	})
 
 	its.Run("wallet not found", func() {
@@ -67,6 +48,10 @@ func (its *IntegrationTestSuite) TestGetWallet() {
 
 		its.sendRequest(http.MethodGet, walletIDPath, http.StatusNotFound, &wallet, nil)
 	})
+}
+
+func (its *IntegrationTestSuite) TestGetWallet() {
+
 }
 
 func (its *IntegrationTestSuite) TestUpdateWallet() {
