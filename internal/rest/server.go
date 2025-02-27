@@ -25,10 +25,10 @@ type service interface {
 	GetWallet(ctx context.Context, walletID uuid.UUID) (*models.Wallet, error)
 	UpdateWallet(ctx context.Context, wallet models.Wallet) error
 	DeleteWallet(ctx context.Context, walletID uuid.UUID) error
-	GetAllWallets(ctx context.Context, userID uuid.UUID) ([]models.Wallet, error)
+	GetAllWallets(ctx context.Context) ([]models.Wallet, error)
 }
 
-func New(service service) (*Server, error) {
+func New(service service) *Server {
 	router := chi.NewRouter()
 	s := &Server{
 		service: service,
@@ -47,7 +47,7 @@ func New(service service) (*Server, error) {
 		r.Get("/", s.GetWallets)
 	})
 
-	return s, nil
+	return s
 }
 
 func (s *Server) Run(ctx context.Context) error {

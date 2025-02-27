@@ -57,7 +57,7 @@ func (s *Server) GetWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) UpdateWallet(w http.ResponseWriter, r *http.Request) {
-	walletIDStr := chi.URLParam(r, "wallet_id")
+	walletIDStr := chi.URLParam(r, "walletId")
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
@@ -83,7 +83,7 @@ func (s *Server) UpdateWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) DeleteWallet(w http.ResponseWriter, r *http.Request) {
-	walletIDStr := chi.URLParam(r, "wallet_id")
+	walletIDStr := chi.URLParam(r, "walletId")
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
@@ -98,16 +98,7 @@ func (s *Server) DeleteWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) GetWallets(w http.ResponseWriter, r *http.Request) {
-	userIDStr := r.URL.Query().Get("user_id")
-
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		http.Error(w, "invalid user id", http.StatusBadRequest)
-
-		return
-	}
-
-	wallets, err := s.service.GetAllWallets(r.Context(), userID)
+	wallets, err := s.service.GetAllWallets(r.Context())
 	if err != nil {
 		http.Error(w, "failed to obtain wallets", http.StatusInternalServerError)
 	}

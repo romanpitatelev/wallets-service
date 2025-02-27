@@ -42,10 +42,7 @@ func main() {
 
 	svc := service.New(pgStore)
 
-	server, err := rest.New(svc)
-	if err != nil {
-		log.Panic().Msg("Failed to create new server")
-	}
+	server := rest.New(svc)
 
 	errGr, ctx := errgroup.WithContext(ctx)
 

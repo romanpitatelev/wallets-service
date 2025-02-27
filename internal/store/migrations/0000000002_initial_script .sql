@@ -1,7 +1,7 @@
 -- +migrate Up
 
 CREATE TABLE users (
-    userid NUMERIC UNIQUE PRIMARY KEY,
+    userid UUID UNIQUE PRIMARY KEY,
     deleted BOOLEAN NOT NULL
 );
 

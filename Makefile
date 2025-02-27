@@ -14,3 +14,8 @@ down:
 
 lint:
 	golangci-lint run
+
+test:
+	go test ./... -v -coverpkg=./... -coverprofile=coverage.txt -covermode atomic
+	go tool cover -func=coverage.txt | grep 'total'
+	gocover-cobertura < coverage.txt > coverage.xml

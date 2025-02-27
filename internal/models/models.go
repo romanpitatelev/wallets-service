@@ -28,4 +28,7 @@ type Wallet struct {
 	DeletedAt  time.Time `json:"deletedAt"`
 }
 
-var ErrWalletNotFound = errors.New("error wallet not found")
+var (
+	ErrWalletNotFound = errors.New("error wallet not found")
+	ErrWalletUpToDate = errors.New("wallet is up-to-date")
+)

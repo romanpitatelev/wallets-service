@@ -14,7 +14,7 @@ type walletStore interface {
 	GetWallet(ctx context.Context, walletID uuid.UUID) (*models.Wallet, error)
 	UpdateWallet(ctx context.Context, wallet models.Wallet) error
 	DeleteWallet(ctx context.Context, walletID uuid.UUID) error
-	GetWallets(ctx context.Context, userID uuid.UUID) ([]models.Wallet, error)
+	GetWallets(ctx context.Context) ([]models.Wallet, error)
 }
 
 type Service struct {
@@ -66,8 +66,8 @@ func (s *Service) DeleteWallet(ctx context.Context, walletID uuid.UUID) error {
 	return nil
 }
 
-func (s *Service) GetAllWallets(ctx context.Context, userID uuid.UUID) ([]models.Wallet, error) {
-	wallets, err := s.walletStore.GetWallets(ctx, userID)
+func (s *Service) GetAllWallets(ctx context.Context) ([]models.Wallet, error) {
+	wallets, err := s.walletStore.GetWallets(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting wallets info: %w", err)
 	}
