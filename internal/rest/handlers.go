@@ -2,6 +2,7 @@ package rest
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -61,8 +62,15 @@ func (s *Server) GetWallet(w http.ResponseWriter, r *http.Request) {
 
 	wallet, err := s.service.GetWallet(r.Context(), walletID)
 	if err != nil {
+		if errors.Is(err, models.ErrWalletNotFound) {
+			http.Error(w, "wallet not found", http.StatusNotFound)
+
+			return
+		}
+
 		log.Error().Err(err).Msg("failed to get wallet info")
-		http.Error(w, "failed to get wallet", http.StatusBadRequest)
+
+		http.Error(w, "failed to get wallet", http.StatusInternalServerError)
 
 		return
 	}
@@ -127,17 +135,29 @@ func (s *Server) DeleteWallet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.service.DeleteWallet(r.Context(), walletID); err != nil {
+		if errors.Is(err, models.ErrWalletNotFound) {
+			http.Error(w, "wallet not found", http.StatusNotFound)
+
+			return
+		}
+
 		log.Error().Err(err).Msg("error deleting wallet")
-		log.Error().Err(err).Msg("error deleting wallet")
+
+		http.Error(w, "error deleting wallet", http.StatusInternalServerError)
 
 		return
 	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) GetWallets(w http.ResponseWriter, r *http.Request) {
 	wallets, err := s.service.GetAllWallets(r.Context())
 	if err != nil {
-		http.Error(w, "failed to obtain wallets", http.StatusInternalServerError)
+		log.Error().Err(err).Msg("failed to obtain wallets")
+		http.Error(w, "failed to obtain wallets", http.StatusNotFound)
+
+		return
 	}
 
 	w.Header().Set("content-Type", "application/json")

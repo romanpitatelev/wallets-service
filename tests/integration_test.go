@@ -61,11 +61,9 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	go func() {
 		err = s.server.Run(ctx)
 		s.Require().NoError(err)
-
 	}()
 
 	time.Sleep(50 * time.Millisecond)
-
 }
 
 func (s *IntegrationTestSuite) TearDownSuite() {
@@ -73,6 +71,8 @@ func (s *IntegrationTestSuite) TearDownSuite() {
 }
 
 func TestIntegrationSetupSuite(t *testing.T) {
+	t.Parallel()
+
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
@@ -80,27 +80,36 @@ func (s *IntegrationTestSuite) sendRequest(method, path string, status int, enti
 	body, err := json.Marshal(entity)
 	s.Require().NoError(err)
 
+	requestURL := fmt.Sprintf("http://localhost:%d%s", port, path)
+	s.T().Logf("Sending request to %s", requestURL)
+
 	request, err := http.NewRequestWithContext(context.Background(), method,
 		fmt.Sprintf("http://localhost:%d%s", port, path), bytes.NewReader(body))
-	s.Require().NoError(err)
+	s.Require().NoError(err, "fail to create request")
 
 	request.Header.Set("Content-Type", "application/json")
 
 	client := http.Client{}
 
 	response, err := client.Do(request)
-	s.Require().NoError(err)
+	s.Require().NoError(err, "fail to execute request")
+
+	s.Require().NotNil(response, "response object is nil")
 
 	defer func() {
 		err = response.Body.Close()
 		s.Require().NoError(err)
 	}()
 
+	s.T().Logf("Response Status Code: %d", response.StatusCode)
+
 	if status != response.StatusCode {
 		responseBody, err := io.ReadAll(response.Body)
 		s.Require().NoError(err)
 
-		s.T().Log(responseBody)
+		s.T().Logf("Response Body: %s", string(responseBody))
+
+		s.Require().Equal(status, response.StatusCode, "unexpected status code")
 
 		return
 	}
@@ -111,5 +120,4 @@ func (s *IntegrationTestSuite) sendRequest(method, path string, status int, enti
 
 	err = json.NewDecoder(response.Body).Decode(result)
 	s.Require().NoError(err)
-
 }

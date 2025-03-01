@@ -3,14 +3,12 @@ package tests
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/romanpitatelev/wallets-service/internal/models"
 )
 
 func (s *IntegrationTestSuite) TestCreateWallet() {
-
 	wallet := models.Wallet{
 		WalletID:   uuid.New(),
 		WalletName: "testWalletPost",
@@ -35,25 +33,28 @@ func (s *IntegrationTestSuite) TestGetWallet() {
 		WalletName: "testWalletGet",
 		Balance:    200.0,
 		Currency:   "CHF",
-		CreatedAt:  time.Now(),
 	}
 
 	var createdWallet models.Wallet
 
 	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &wallet, &createdWallet)
 
+	s.T().Logf("Created Wallet: %+v", createdWallet)
+
 	s.Run("get wallet successful", func() {
-		uuidString := uuid.UUID(createdWallet.WalletID).String()
+		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString
 
-		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdWallet)
+		var obtainedWallet models.Wallet
 
-		s.Require().Equal(wallet.WalletID, createdWallet.WalletID)
-		s.Require().Equal(wallet.WalletName, createdWallet.WalletName)
-		s.Require().Equal(wallet.Balance, createdWallet.Balance)
-		s.Require().Equal(wallet.Currency, createdWallet.Currency)
-		s.Require().Equal(wallet.CreatedAt, createdWallet.CreatedAt)
+		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &obtainedWallet)
 
+		s.T().Logf("Wallet obtained: %+v", obtainedWallet)
+
+		s.Require().Equal(createdWallet.WalletID, obtainedWallet.WalletID)
+		s.Require().Equal(createdWallet.WalletName, obtainedWallet.WalletName)
+		s.Require().Equal(createdWallet.Balance, obtainedWallet.Balance)
+		s.Require().Equal(createdWallet.Currency, obtainedWallet.Currency)
 	})
 
 	s.Run("wallet not found", func() {
@@ -81,7 +82,6 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 		walletIDPath := walletPath + "/" + walletIDNonExistent
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusNotFound, nil, nil)
-
 	})
 
 	s.Run("name updated successfully", func() {
@@ -93,10 +93,12 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString
 
-		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &createdWallet)
+		var updateWalletAnother models.Wallet
 
-		s.Require().Equal(updatedWallet.WalletName, createdWallet.WalletName)
-		s.Require().Equal(updatedWallet.Currency, createdWallet.Currency)
+		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &updateWalletAnother)
+
+		s.Require().Equal(updatedWallet.WalletName, updateWalletAnother.WalletName)
+		s.Require().Equal(updatedWallet.Currency, updateWalletAnother.Currency)
 	})
 
 	s.Run("currency updated successfully", func() {
@@ -108,21 +110,29 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString
 
-		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &createdWallet)
+		var updateWalletAnother models.Wallet
 
-		s.Require().Equal(updatedWallet.WalletName, createdWallet.WalletName)
-		s.Require().Equal(updatedWallet.Currency, createdWallet.Currency)
+		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &updateWalletAnother)
+
+		s.Require().Equal(updatedWallet.WalletName, updateWalletAnother.WalletName)
+		s.Require().Equal(updatedWallet.Currency, updateWalletAnother.Currency)
 	})
 
 	s.Run("nothing to update", func() {
-		updatedWallet := createdWallet
-		uuidString := uuid.UUID(createdWallet.WalletID).String()
+		updatedWallet := models.WalletUpdate{
+			WalletName: createdWallet.WalletName,
+			Currency:   createdWallet.Currency,
+		}
+
+		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString
 
-		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &createdWallet)
+		var updateWalletAnother models.Wallet
 
-		s.Require().Equal(updatedWallet.WalletName, createdWallet.WalletName)
-		s.Require().Equal(updatedWallet.Currency, createdWallet.Currency)
+		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &updateWalletAnother)
+
+		s.Require().Equal(updatedWallet.WalletName, updateWalletAnother.WalletName)
+		s.Require().Equal(updatedWallet.Currency, updateWalletAnother.Currency)
 	})
 }
 
@@ -145,7 +155,7 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 		walletBeforeDeletion, err := s.service.GetWallet(context.Background(), createdWallet.WalletID)
 
 		s.Require().NoError(err, "failed to obtain wallet before deletion")
-		s.Require().Nil(walletBeforeDeletion.DeletedAt, "deletedAt should be nil before deletion")
+		s.Require().False(walletBeforeDeletion.Deleted, "deletedAt should be nil before deletion")
 
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNoContent, nil, nil)
 
@@ -153,7 +163,7 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 		s.Require().NoError(err, "failed to obtain wallet after deletion")
 
 		s.Require().NotNil(walletAfterDeletion.DeletedAt, "deletedAt should not be nil after deletion")
-		s.Require().True(walletAfterDeletion.DeletedAt.After(walletBeforeDeletion.CreatedAt), "deletedAt should be after createdAt")
+		s.Require().True(walletAfterDeletion.Deleted, "wallet should have field deleted as true")
 	})
 
 	s.Run("wallet not found", func() {

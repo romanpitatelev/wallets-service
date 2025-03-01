@@ -27,7 +27,7 @@ linters:
   
 run:
   timeout: 5m
-  tests: false
+  tests: true
 
 output:
   formats:
