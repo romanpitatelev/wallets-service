@@ -13,7 +13,7 @@ down:
 	docker compose down
 
 lint:
-	golangci-lint run
+	golangci-lint run ./...
 
 test:
 	go test ./... -v -coverpkg=./... -coverprofile=coverage.txt -covermode atomic

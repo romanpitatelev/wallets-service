@@ -31,9 +31,9 @@ type IntegrationTestSuite struct {
 	server     *rest.Server
 }
 
-func (its *IntegrationTestSuite) SetupSuite() {
+func (s *IntegrationTestSuite) SetupSuite() {
 	ctx, cancel := context.WithCancel(context.Background())
-	its.cancelFunc = cancel
+	s.cancelFunc = cancel
 
 	conf := &configs.Config{
 		BindAddress:      ":8081",
@@ -48,19 +48,19 @@ func (its *IntegrationTestSuite) SetupSuite() {
 
 	//	conf := configs.NewConfig()
 
-	its.db, err = store.New(ctx, conf)
-	its.Require().NoError(err)
+	s.db, err = store.New(ctx, conf)
+	s.Require().NoError(err)
 
-	err = its.db.Migrate(migrate.Up)
-	its.Require().NoError(err)
+	err = s.db.Migrate(migrate.Up)
+	s.Require().NoError(err)
 
-	its.service = service.New(its.db)
+	s.service = service.New(s.db)
 
-	its.server = rest.New(its.service)
+	s.server = rest.New(s.service)
 
 	go func() {
-		err = its.server.Run(ctx)
-		its.Require().NoError(err)
+		err = s.server.Run(ctx)
+		s.Require().NoError(err)
 
 	}()
 
@@ -68,40 +68,48 @@ func (its *IntegrationTestSuite) SetupSuite() {
 
 }
 
-func (its *IntegrationTestSuite) TearDownSuite() {
-	its.cancelFunc()
+func (s *IntegrationTestSuite) TearDownSuite() {
+	s.cancelFunc()
 }
 
-func TestIntergationSetupSuite(t *testing.T) {
+func TestIntegrationSetupSuite(t *testing.T) {
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
-func (its *IntegrationTestSuite) sendRequest(method, path string, status int, entity, result any) {
+func (s *IntegrationTestSuite) sendRequest(method, path string, status int, entity, result any) {
 	body, err := json.Marshal(entity)
-	its.Require().NoError(err)
+	s.Require().NoError(err)
 
 	request, err := http.NewRequestWithContext(context.Background(), method,
 		fmt.Sprintf("http://localhost:%d%s", port, path), bytes.NewReader(body))
-	its.Require().NoError(err)
+	s.Require().NoError(err)
+
+	request.Header.Set("Content-Type", "application/json")
 
 	client := http.Client{}
 
 	response, err := client.Do(request)
-	its.Require().NoError(err)
+	s.Require().NoError(err)
 
 	defer func() {
 		err = response.Body.Close()
-		its.Require().NoError(err)
+		s.Require().NoError(err)
 	}()
+
+	if status != response.StatusCode {
+		responseBody, err := io.ReadAll(response.Body)
+		s.Require().NoError(err)
+
+		s.T().Log(responseBody)
+
+		return
+	}
 
 	if result == nil {
 		return
 	}
 
-	responseBody, err := io.ReadAll(response.Body)
-	its.Require().NoError(err)
-
-	err = json.Unmarshal(responseBody, result)
-	its.Require().NoError(err)
+	err = json.NewDecoder(response.Body).Decode(result)
+	s.Require().NoError(err)
 
 }

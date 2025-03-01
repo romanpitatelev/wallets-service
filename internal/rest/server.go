@@ -21,9 +21,9 @@ type Server struct {
 }
 
 type service interface {
-	CreateWallet(ctx context.Context, wallet models.Wallet) error
-	GetWallet(ctx context.Context, walletID uuid.UUID) (*models.Wallet, error)
-	UpdateWallet(ctx context.Context, wallet models.Wallet) error
+	CreateWallet(ctx context.Context, wallet models.Wallet) (models.Wallet, error)
+	GetWallet(ctx context.Context, walletID uuid.UUID) (models.Wallet, error)
+	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate) (models.Wallet, error)
 	DeleteWallet(ctx context.Context, walletID uuid.UUID) error
 	GetAllWallets(ctx context.Context) ([]models.Wallet, error)
 }
@@ -39,12 +39,12 @@ func New(service service) *Server {
 		},
 	}
 
-	router.Route("/api/v1/wallets", func(r chi.Router) {
-		r.Post("/", s.CreateWallet)
-		r.Get("/{id}", s.GetWallet)
-		r.Patch("/{id}", s.UpdateWallet)
-		r.Delete("/{id}", s.DeleteWallet)
-		r.Get("/", s.GetWallets)
+	router.Route("/api/v1", func(r chi.Router) {
+		r.Post("/wallets", s.CreateWallet)
+		r.Get("/wallets/{walletId}", s.GetWallet)
+		r.Patch("/wallets/{walletId}", s.UpdateWallet)
+		r.Delete("/wallets/{walletId}", s.DeleteWallet)
+		r.Get("/wallets", s.GetWallets)
 	})
 
 	return s

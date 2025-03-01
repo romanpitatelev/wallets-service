@@ -6,6 +6,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -96,6 +97,7 @@ func (d *DataStore) Migrate(direction migrate.MigrationDirection) error {
 		return fmt.Errorf("failed to count the number of migrations: %w", err)
 	}
 
+	log.Debug().Msg("Migrations applied successfully")
 	return nil
 }
 
@@ -114,12 +116,15 @@ func (d *DataStore) UpsertUser(ctx context.Context, users models.User) error {
 	return nil
 }
 
-func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet) error {
-	query := `INSERT INTO wallets (walletId, walletName, balance, currency, createdAt, updatedAt, deletedAt)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING walletId, walletName, balance, currency, createdAt, updatedAt, deletedAt`
+func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet) (models.Wallet, error) {
 
-	_, err := d.pool.Exec(ctx, query,
+	query := `INSERT INTO wallets (walletId, walletName, balance, currency, createdAt, updatedAt, deletedAt, deleted)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING walletId, walletName, balance, currency, createdAt, updatedAt, deletedAt, deleted`
+
+	log.Debug().Interface("wallet", wallet).Msg("Inserting wallet into database")
+
+	row := d.pool.QueryRow(ctx, query,
 		wallet.WalletID,
 		wallet.WalletName,
 		wallet.Balance,
@@ -127,20 +132,40 @@ func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet) erro
 		wallet.CreatedAt,
 		wallet.UpdatedAt,
 		wallet.DeletedAt,
+		wallet.Deleted,
 	)
+
+	var createdWallet models.Wallet
+
+	err := row.Scan(
+		&createdWallet.WalletID,
+		&createdWallet.WalletName,
+		&createdWallet.Balance,
+		&createdWallet.Currency,
+		&createdWallet.CreatedAt,
+		&createdWallet.UpdatedAt,
+		&createdWallet.DeletedAt,
+		&createdWallet.Deleted,
+	)
+
 	if err != nil {
-		return fmt.Errorf("failed to create wallet: %w", err)
+		log.Error().Err(err).Msg("Failed to insert wallet into database")
+		return models.Wallet{}, fmt.Errorf("failed to create wallet: %w", err)
 	}
 
-	return nil
+	log.Debug().Interface("createdWallet", createdWallet).Msg("Wallet created successfully")
+
+	return createdWallet, nil
 }
 
-func (d *DataStore) GetWallet(ctx context.Context, walletID uuid.UUID) (*models.Wallet, error) {
+func (d *DataStore) GetWallet(ctx context.Context, walletID uuid.UUID) (models.Wallet, error) {
 	var wallet models.Wallet
 
-	query := `SELECT walletId, walletName, balance, currency, createdAt, updatedAt, deletedAt
+	query := `SELECT walletId, walletName, balance, currency, createdAt, updatedAt, deletedAt, deleted
 		FROM wallets
-		WHERE walletId = $1 AND deletedAt IS NULL`
+		WHERE walletId = $1 AND deleted = false`
+
+	log.Debug().Str("walletID", walletID.String()).Msg("Retrieving wallet from database")
 
 	err := d.pool.QueryRow(ctx, query, walletID).Scan(
 		&wallet.WalletID,
@@ -150,61 +175,77 @@ func (d *DataStore) GetWallet(ctx context.Context, walletID uuid.UUID) (*models.
 		&wallet.CreatedAt,
 		&wallet.UpdatedAt,
 		&wallet.DeletedAt,
+		&wallet.Deleted,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("failed to get wallet %s by id: %w", walletID.String(), err)
+			log.Error().Err(err).Str("walletID", walletID.String()).Msg("Wallet not found in database")
+			return models.Wallet{}, models.ErrWalletNotFound
 		}
 
-		return nil, fmt.Errorf("failed to get wallet info: %w", err)
+		log.Error().Err(err).Msg("Failed to retrieve wallet from database")
+
+		return models.Wallet{}, fmt.Errorf("failed to get wallet info: %w", err)
 	}
 
-	return &wallet, nil
+	log.Debug().Interface("wallet", wallet).Msg("Wallet retrieved successfully")
+
+	return wallet, nil
 }
 
-func (d *DataStore) UpdateWallet(ctx context.Context, wallet models.Wallet) error {
-	var exists bool
+func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoWallet models.WalletUpdate) (models.Wallet, error) {
 
-	existQuery := `SELECT EXISTS
-		(SELECT 1 FROM wallets 
-		WHERE walletid = $1 
-		AND deletedAt IS NULL)`
-
-	err := d.pool.QueryRow(ctx, existQuery, wallet.WalletID).Scan(&exists)
-	if err != nil {
-		return fmt.Errorf("failed to check if wallet exists: %w", err)
-	}
-
-	if !exists {
-		return models.ErrWalletNotFound
+	if newInfoWallet.WalletName == "" || newInfoWallet.Currency == "" {
+		currentWallet, err := d.GetWallet(ctx, walletID)
+		if err != nil {
+			return models.Wallet{}, fmt.Errorf("failed to fetch current wallet: %w", err)
+		}
+		return currentWallet, nil
 	}
 
 	query := `UPDATE wallets
-		SET walletName = $2, balance = $3, currency = $4, updatedAt = $5
-		WHERE walletId = $1 AND deletedAt IS NULL`
+		SET walletName = $1, currency = $2, updatedAt = $3
+		WHERE walletId = $4 AND deleted = false
+		RETURNING walletId, walletName, balance, currency, createdAt, updatedAt, deletedAt, deleted`
 
-	result, err := d.pool.Exec(ctx, query,
-		wallet.WalletID,
-		wallet.WalletName,
-		wallet.Balance,
-		wallet.Currency,
-		wallet.UpdatedAt,
+	updatedAt := time.Now()
+	deleted := false
+
+	row := d.pool.QueryRow(ctx, query,
+		newInfoWallet.WalletName,
+		newInfoWallet.Currency,
+		updatedAt,
+		walletID,
+		deleted,
+	)
+
+	var wallet models.Wallet
+
+	err := row.Scan(
+		&wallet.WalletID,
+		&wallet.UserID,
+		&wallet.WalletName,
+		&wallet.Balance,
+		&wallet.Currency,
+		&wallet.CreatedAt,
+		&wallet.UpdatedAt,
+		&wallet.DeletedAt,
+		&wallet.Deleted,
 	)
 	if err != nil {
-		return fmt.Errorf("error updating wallet %s: %w", wallet.WalletID.String(), err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Wallet{}, models.ErrWalletNotFound
+		}
+		return models.Wallet{}, fmt.Errorf("failed to get wallet info: %w", err)
 	}
 
-	if result.RowsAffected() == 0 {
-		return models.ErrWalletUpToDate
-	}
-
-	return nil
+	return wallet, nil
 }
 
 func (d *DataStore) DeleteWallet(ctx context.Context, walletID uuid.UUID) error {
 	query := `UPDATE wallets
 		SET deletedAt = NOW()
-		WHERE walletId = $1`
+		WHERE walletId = $1 AND deleted = false`
 
 	result, err := d.pool.Exec(ctx, query, walletID)
 	if err != nil {
@@ -219,9 +260,10 @@ func (d *DataStore) DeleteWallet(ctx context.Context, walletID uuid.UUID) error 
 }
 
 func (d *DataStore) GetWallets(ctx context.Context) ([]models.Wallet, error) {
-	query := `SELECT walletId, walletName, balance, currency, createdAt, updatedAt, deletedAt
-	FROM wallets
-	WHERE deletedAt IS NULL`
+	query :=
+		`SELECT walletId, walletName, balance, currency, createdAt, updatedAt, deletedAt, deleted
+		FROM wallets
+		WHERE deleted = false`
 
 	rows, err := d.pool.Query(ctx, query)
 	if err != nil {
@@ -242,6 +284,7 @@ func (d *DataStore) GetWallets(ctx context.Context) ([]models.Wallet, error) {
 			&wallet.CreatedAt,
 			&wallet.UpdatedAt,
 			&wallet.DeletedAt,
+			&wallet.Deleted,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error when scanning wallet: %w", err)

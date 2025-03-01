@@ -7,7 +7,8 @@ CREATE TABLE wallets (
     currency VARCHAR NOT NULL,
     createdAt TIMESTAMP NOT NULL,
     updatedAt TIMESTAMP NOT NULL,
-    deletedAt TIMESTAMP
+    deletedAt TIMESTAMP,
+    deleted BOOLEAN NOT NULL DEFAULT false
 );
 
 -- +migrate Down

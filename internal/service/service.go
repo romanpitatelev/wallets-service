@@ -10,9 +10,9 @@ import (
 )
 
 type walletStore interface {
-	CreateWallet(ctx context.Context, wallet models.Wallet) error
-	GetWallet(ctx context.Context, walletID uuid.UUID) (*models.Wallet, error)
-	UpdateWallet(ctx context.Context, wallet models.Wallet) error
+	CreateWallet(ctx context.Context, wallet models.Wallet) (models.Wallet, error)
+	GetWallet(ctx context.Context, walletID uuid.UUID) (models.Wallet, error)
+	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate) (models.Wallet, error)
 	DeleteWallet(ctx context.Context, walletID uuid.UUID) error
 	GetWallets(ctx context.Context) ([]models.Wallet, error)
 }
@@ -27,33 +27,42 @@ func New(walletStore walletStore) *Service {
 	}
 }
 
-func (s *Service) CreateWallet(ctx context.Context, wallet models.Wallet) error {
+func (s *Service) CreateWallet(ctx context.Context, wallet models.Wallet) (models.Wallet, error) {
 	log.Info().Str("walletID", wallet.WalletID.String()).Msg("Creating wallet")
 
-	if err := s.walletStore.CreateWallet(ctx, wallet); err != nil {
-		return fmt.Errorf("failed to create wallet: %w", err)
+	wallet, err := s.walletStore.CreateWallet(ctx, wallet)
+	if err != nil {
+		return models.Wallet{}, fmt.Errorf("failed to create wallet: %w", err)
 	}
 
-	return nil
-}
-
-func (s *Service) GetWallet(ctx context.Context, walletID uuid.UUID) (*models.Wallet, error) {
-	wallet, err := s.walletStore.GetWallet(ctx, walletID)
+	dbWallet, err := s.walletStore.GetWallet(ctx, wallet.WalletID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get wallet: %w", err)
+		log.Error().Err(err).Msg("failed to verify wallet creation")
+	} else {
+		log.Debug().Interface("dbWallet", dbWallet).Msg("Wallet created successfully")
 	}
 
 	return wallet, nil
 }
 
-func (s *Service) UpdateWallet(ctx context.Context, wallet models.Wallet) error {
-	log.Info().Str("walletID", wallet.WalletID.String()).Msg("Updating wallet")
-
-	if err := s.walletStore.UpdateWallet(ctx, wallet); err != nil {
-		return fmt.Errorf("failed to update wallet: %w", err)
+func (s *Service) GetWallet(ctx context.Context, walletID uuid.UUID) (models.Wallet, error) {
+	wallet, err := s.walletStore.GetWallet(ctx, walletID)
+	if err != nil {
+		return models.Wallet{}, fmt.Errorf("failed to get wallet: %w", err)
 	}
 
-	return nil
+	return wallet, nil
+}
+
+func (s *Service) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoWallet models.WalletUpdate) (models.Wallet, error) {
+	log.Info().Str("walletID", walletID.String()).Msg("Updating wallet")
+
+	updatedWallet, err := s.walletStore.UpdateWallet(ctx, walletID, newInfoWallet)
+	if err != nil {
+		return models.Wallet{}, fmt.Errorf("failed to update wallet: %w", err)
+	}
+
+	return updatedWallet, nil
 }
 
 func (s *Service) DeleteWallet(ctx context.Context, walletID uuid.UUID) error {

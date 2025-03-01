@@ -26,6 +26,12 @@ type Wallet struct {
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`
 	DeletedAt  time.Time `json:"deletedAt"`
+	Deleted    bool      `json:"deleted"`
+}
+
+type WalletUpdate struct {
+	WalletName string `json:"walletName"`
+	Currency   string `json:"currency"`
 }
 
 var (
