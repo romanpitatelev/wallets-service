@@ -3,13 +3,11 @@ package rest
 import (
 	"encoding/json"
 	"errors"
-	"net/http"
-	"time"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/rs/zerolog/log"
+	"net/http"
 )
 
 func (s *Server) CreateWallet(w http.ResponseWriter, r *http.Request) {
@@ -23,9 +21,6 @@ func (s *Server) CreateWallet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	wallet.Balance = 0.0
-	wallet.CreatedAt = time.Now()
-	wallet.UpdatedAt = time.Now()
-	wallet.Deleted = false
 
 	log.Debug().Str("walletID", wallet.WalletID.String()).Msg("Creating wallet")
 

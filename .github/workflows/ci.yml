@@ -28,4 +28,4 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - run: go build ./cmd/wallets-service/main.go
 
-  
+  #TODO tests

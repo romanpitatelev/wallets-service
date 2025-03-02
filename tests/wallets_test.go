@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -53,7 +52,7 @@ func (s *IntegrationTestSuite) TestGetWallet() {
 
 		s.Require().Equal(createdWallet.WalletID, obtainedWallet.WalletID)
 		s.Require().Equal(createdWallet.WalletName, obtainedWallet.WalletName)
-		s.Require().Equal(createdWallet.Balance, obtainedWallet.Balance)
+		s.Require().Equal(0.0, obtainedWallet.Balance)
 		s.Require().Equal(createdWallet.Currency, obtainedWallet.Currency)
 	})
 
@@ -152,18 +151,7 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString
 
-		walletBeforeDeletion, err := s.service.GetWallet(context.Background(), createdWallet.WalletID)
-
-		s.Require().NoError(err, "failed to obtain wallet before deletion")
-		s.Require().False(walletBeforeDeletion.Deleted, "deletedAt should be nil before deletion")
-
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNoContent, nil, nil)
-
-		walletAfterDeletion, err := s.service.GetWallet(context.Background(), createdWallet.WalletID)
-		s.Require().NoError(err, "failed to obtain wallet after deletion")
-
-		s.Require().NotNil(walletAfterDeletion.DeletedAt, "deletedAt should not be nil after deletion")
-		s.Require().True(walletAfterDeletion.Deleted, "wallet should have field deleted as true")
 	})
 
 	s.Run("wallet not found", func() {

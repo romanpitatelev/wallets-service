@@ -13,8 +13,8 @@ type IP struct {
 }
 
 type User struct {
-	UserID  int  `json:"userid"`
-	Deleted bool `json:"deleted"`
+	UserID    int       `json:"userId"`
+	DeletedAt time.Time `json:"deleted_at"`
 }
 
 type Wallet struct {
@@ -25,10 +25,9 @@ type Wallet struct {
 	Currency   string    `json:"currency"`
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`
-	DeletedAt  time.Time `json:"deletedAt"`
-	Deleted    bool      `json:"deleted"`
 }
 
+// TODO переделать апдейт, поля должны быть *
 type WalletUpdate struct {
 	WalletName string `json:"walletName"`
 	Currency   string `json:"currency"`
@@ -36,5 +35,4 @@ type WalletUpdate struct {
 
 var (
 	ErrWalletNotFound = errors.New("error wallet not found")
-	ErrWalletUpToDate = errors.New("wallet is up-to-date")
 )

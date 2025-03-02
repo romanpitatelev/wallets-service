@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/romanpitatelev/wallets-service/internal/models"
@@ -17,12 +18,19 @@ type walletStore interface {
 	GetWallets(ctx context.Context) ([]models.Wallet, error)
 }
 
+type Config struct {
+	StaleWalletDuration time.Duration
+	PerformCheckPeriod  time.Duration
+}
+
 type Service struct {
+	cfg         Config
 	walletStore walletStore
 }
 
-func New(walletStore walletStore) *Service {
+func New(walletStore walletStore, cfg Config) *Service {
 	return &Service{
+		cfg:         cfg,
 		walletStore: walletStore,
 	}
 }
@@ -33,13 +41,6 @@ func (s *Service) CreateWallet(ctx context.Context, wallet models.Wallet) (model
 	wallet, err := s.walletStore.CreateWallet(ctx, wallet)
 	if err != nil {
 		return models.Wallet{}, fmt.Errorf("failed to create wallet: %w", err)
-	}
-
-	dbWallet, err := s.walletStore.GetWallet(ctx, wallet.WalletID)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to verify wallet creation")
-	} else {
-		log.Debug().Interface("dbWallet", dbWallet).Msg("Wallet created successfully")
 	}
 
 	return wallet, nil
@@ -82,4 +83,19 @@ func (s *Service) GetAllWallets(ctx context.Context) ([]models.Wallet, error) {
 	}
 
 	return wallets, nil
+}
+
+func (s *Service) Run(ctx context.Context) error {
+	ticker := time.NewTicker(s.cfg.PerformCheckPeriod)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+		}
+
+		// call delete stale wallets
+	}
 }
