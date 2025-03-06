@@ -41,8 +41,8 @@ func main() {
 	log.Trace().Msg("kafka consumer created")
 
 	svc := service.New(pgStore, service.Config{
-		StaleWalletDuration: 0,
-		PerformCheckPeriod:  0,
+		StaleWalletDuration: conf.StaleWalletDuration,
+		PerformCheckPeriod:  conf.PerformCheckPeriod,
 	})
 
 	server := rest.New(svc)

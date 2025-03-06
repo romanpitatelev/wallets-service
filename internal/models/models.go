@@ -39,5 +39,4 @@ var (
 	ErrWalletUpToDate       = errors.New("wallet is up-to-date")
 	ErrZeroValueWallet      = errors.New("zero-value wallet")
 	ErrNonZeroBalanceWallet = errors.New("wallet has non-zero balance")
-	ErrReadWalletInfo       = errors.New("failed to read wallet info")
 )

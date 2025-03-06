@@ -16,7 +16,7 @@ type walletStore interface {
 	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate) (models.Wallet, error)
 	DeleteWallet(ctx context.Context, walletID uuid.UUID) error
 	GetWallets(ctx context.Context) ([]models.Wallet, error)
-	ArchiveStaleWallets(ctx context.Context) error
+	ArchiveStaleWallets(ctx context.Context, checkPeriod time.Duration) error
 }
 
 type Config struct {
@@ -102,7 +102,9 @@ func (s *Service) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			s.walletStore.ArchiveStaleWallets(ctx)
+			if err := s.walletStore.ArchiveStaleWallets(ctx, s.cfg.PerformCheckPeriod); err != nil {
+				return fmt.Errorf("error while archiving inactive wallets: %w", err)
+			}
 		}
 	}
 }

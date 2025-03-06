@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -160,7 +161,7 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 		walletIDNonExistent := uuid.New().String()
 		walletIDPath := walletPath + "/" + walletIDNonExistent
 
-		s.sendRequest(http.MethodGet, walletIDPath, http.StatusNotFound, nil, nil)
+		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNotFound, nil, nil)
 	})
 
 	s.Run("balance is non-zero", func() {
@@ -176,7 +177,9 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 
 		s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletNonZero, &createdWalletNonZero)
 
-		createdWalletNonZero.Balance = 259.0
+		err := s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2`,
+			259.0, createdWalletNonZero.WalletID)
+		s.Require().NoError(err)
 
 		uuidString := createdWalletNonZero.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString

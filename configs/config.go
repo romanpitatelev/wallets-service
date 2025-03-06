@@ -2,18 +2,21 @@ package configs
 
 import (
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog/log"
 )
 
 type Config struct {
-	BindAddress      string
-	PostgresHost     string
-	PostgresPort     string
-	PostgresDatabase string
-	PostgresUser     string
-	PostgresPassword string
+	BindAddress         string
+	PostgresHost        string
+	PostgresPort        string
+	PostgresDatabase    string
+	PostgresUser        string
+	PostgresPassword    string
+	StaleWalletDuration time.Duration
+	PerformCheckPeriod  time.Duration
 }
 
 func NewConfig() *Config {
@@ -25,12 +28,14 @@ func NewConfig() *Config {
 	log.Debug().Msg("Environment variables loaded")
 
 	config := &Config{
-		BindAddress:      os.Getenv("BIND_ADDRESS"),
-		PostgresHost:     os.Getenv("POSTGRES_HOST"),
-		PostgresPort:     os.Getenv("POSTGRES_PORT"),
-		PostgresDatabase: os.Getenv("POSTGRES_DATABASE"),
-		PostgresUser:     os.Getenv("POSTGRES_USER"),
-		PostgresPassword: os.Getenv("POSTGRES_PASSWORD"),
+		BindAddress:         os.Getenv("BIND_ADDRESS"),
+		PostgresHost:        os.Getenv("POSTGRES_HOST"),
+		PostgresPort:        os.Getenv("POSTGRES_PORT"),
+		PostgresDatabase:    os.Getenv("POSTGRES_DATABASE"),
+		PostgresUser:        os.Getenv("POSTGRES_USER"),
+		PostgresPassword:    os.Getenv("POSTGRES_PASSWORD"),
+		StaleWalletDuration: os.Getenv("STALE_WALLET_DURATION"),
+		PerformCheckPeriod:  os.Getenv("PERFORM_CHECK_PERIOD"),
 	}
 
 	log.Debug().Msg("Loaded configuration")

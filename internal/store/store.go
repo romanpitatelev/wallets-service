@@ -231,10 +231,6 @@ func (d *DataStore) DeleteWallet(ctx context.Context, walletID uuid.UUID) error 
 		return fmt.Errorf("failed to fetch current wallet in DeleteWallet() function: %w", err)
 	}
 
-	if currentWallet.WalletName == "" && currentWallet.Balance == 0.0 && currentWallet.Currency == "" {
-		return models.ErrZeroValueWallet
-	}
-
 	if currentWallet.Balance != 0.0 {
 		return models.ErrNonZeroBalanceWallet
 	}
@@ -304,12 +300,12 @@ func (d *DataStore) Truncate(ctx context.Context, tables ...string) error {
 	return nil
 }
 
-func (d *DataStore) ArchiveStaleWallets(ctx context.Context) error {
+func (d *DataStore) ArchiveStaleWallets(ctx context.Context, checkPeriod time.Duration) error {
 
-	query := `UPDATE wallets
+	query := fmt.Sprintf(`UPDATE wallets
 				SET active = false
 				WHERE balance = 0 
-				AND updated_at < NOW() - INTERVAL '6 months'`
+				AND updated_at < NOW() - INTERVAL '%d seconds'`, int(checkPeriod.Seconds()))
 
 	_, err := d.pool.Exec(ctx, query)
 	if err != nil {
@@ -318,4 +314,12 @@ func (d *DataStore) ArchiveStaleWallets(ctx context.Context) error {
 
 	return nil
 
+}
+
+func (d *DataStore) Exec(ctx context.Context, query string, args ...any) error {
+	if _, err := d.pool.Exec(ctx, query, args...); err != nil {
+		return fmt.Errorf("error executing query %s: %w", query, err)
+	}
+
+	return nil
 }
