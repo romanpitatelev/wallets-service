@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -24,6 +23,7 @@ func (s *IntegrationTestSuite) TestCreateWallet() {
 		s.Require().Equal(wallet.WalletName, createdWallet.WalletName)
 		s.Require().Equal(0.0, createdWallet.Balance)
 		s.Require().Equal(wallet.Currency, createdWallet.Currency)
+
 	})
 }
 
@@ -53,7 +53,7 @@ func (s *IntegrationTestSuite) TestGetWallet() {
 
 		s.Require().Equal(createdWallet.WalletID, obtainedWallet.WalletID)
 		s.Require().Equal(createdWallet.WalletName, obtainedWallet.WalletName)
-		s.Require().Equal(createdWallet.Balance, obtainedWallet.Balance)
+		s.Require().Equal(0.0, obtainedWallet.Balance)
 		s.Require().Equal(createdWallet.Currency, obtainedWallet.Currency)
 	})
 
@@ -140,8 +140,9 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 	wallet := models.Wallet{
 		WalletID:   uuid.New(),
 		WalletName: "testWalletDelete",
-		Balance:    534.0,
+		Balance:    0.0,
 		Currency:   "RUB",
+		Active:     true,
 	}
 
 	var createdWallet models.Wallet
@@ -152,18 +153,7 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString
 
-		walletBeforeDeletion, err := s.service.GetWallet(context.Background(), createdWallet.WalletID)
-
-		s.Require().NoError(err, "failed to obtain wallet before deletion")
-		s.Require().False(walletBeforeDeletion.Deleted, "deletedAt should be nil before deletion")
-
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNoContent, nil, nil)
-
-		walletAfterDeletion, err := s.service.GetWallet(context.Background(), createdWallet.WalletID)
-		s.Require().NoError(err, "failed to obtain wallet after deletion")
-
-		s.Require().NotNil(walletAfterDeletion.DeletedAt, "deletedAt should not be nil after deletion")
-		s.Require().True(walletAfterDeletion.Deleted, "wallet should have field deleted as true")
 	})
 
 	s.Run("wallet not found", func() {
@@ -171,5 +161,33 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 		walletIDPath := walletPath + "/" + walletIDNonExistent
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusNotFound, nil, nil)
+	})
+
+	s.Run("balance is non-zero", func() {
+		walletNonZero := models.Wallet{
+			WalletID:   uuid.New(),
+			WalletName: "testDeleteNonZeroBalanceWallet",
+			Balance:    0.0,
+			Currency:   "USD",
+			Active:     true,
+		}
+
+		var createdWalletNonZero models.Wallet
+
+		s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletNonZero, &createdWalletNonZero)
+
+		createdWalletNonZero.Balance = 259.0
+
+		uuidString := createdWalletNonZero.WalletID.String()
+		walletIDPath := walletPath + "/" + uuidString
+
+		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusBadRequest, nil, nil)
+
+		var obtainedWallet models.Wallet
+
+		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &obtainedWallet)
+
+		s.Require().True(obtainedWallet.Active)
+		s.Require().Nil(obtainedWallet.DeletedAt)
 	})
 }

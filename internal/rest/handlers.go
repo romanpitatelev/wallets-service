@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -23,11 +22,7 @@ func (s *Server) CreateWallet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	wallet.Balance = 0.0
-	wallet.CreatedAt = time.Now()
-	wallet.UpdatedAt = time.Now()
-	wallet.Deleted = false
-
-	log.Debug().Str("walletID", wallet.WalletID.String()).Msg("Creating wallet")
+	wallet.Active = true
 
 	createdWallet, err := s.service.CreateWallet(r.Context(), wallet)
 	if err != nil {
@@ -49,8 +44,6 @@ func (s *Server) CreateWallet(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) GetWallet(w http.ResponseWriter, r *http.Request) {
 	walletIDStr := chi.URLParam(r, "walletId")
-
-	log.Debug().Str("walletId", walletIDStr).Msg("Extracted walletId from URL")
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
@@ -87,7 +80,6 @@ func (s *Server) GetWallet(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) UpdateWallet(w http.ResponseWriter, r *http.Request) {
 	walletIDStr := chi.URLParam(r, "walletId")
-	log.Debug().Str("walletId", walletIDStr).Msg("Extracted walletId from URL")
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
@@ -137,6 +129,12 @@ func (s *Server) DeleteWallet(w http.ResponseWriter, r *http.Request) {
 	if err := s.service.DeleteWallet(r.Context(), walletID); err != nil {
 		if errors.Is(err, models.ErrWalletNotFound) {
 			http.Error(w, "wallet not found", http.StatusNotFound)
+
+			return
+		}
+
+		if errors.Is(err, models.ErrNonZeroBalanceWallet) {
+			http.Error(w, "wallet has non-zero balance, deletion forbidden", http.StatusBadRequest)
 
 			return
 		}

@@ -1,0 +1,21 @@
+-- +migrate Up
+
+CREATE TABLE users (
+    user_id UUID UNIQUE PRIMARY KEY,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE wallets (
+    wallet_id UUID PRIMARY KEY,
+    wallet_name VARCHAR NOT NULL,
+    balance NUMERIC NOT NULL DEFAULT 0 CHECK (balance >= 0),
+    currency VARCHAR NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT current_timestamp,
+    updated_at TIMESTAMP NOT NULL DEFAULT current_timestamp,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    active BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- +migrate Down
+DROP TABLE wallets CASCADE;
+DROP TABLE users CASCADE;

@@ -13,20 +13,20 @@ type IP struct {
 }
 
 type User struct {
-	UserID  int  `json:"userid"`
-	Deleted bool `json:"deleted"`
+	UserID    int       `json:"userId"`
+	DeletedAt time.Time `json:"deletedAt"`
 }
 
 type Wallet struct {
-	WalletID   uuid.UUID `json:"walletId"`
-	UserID     uuid.UUID `json:"userId"`
-	WalletName string    `json:"walletName"`
-	Balance    float64   `json:"balance"`
-	Currency   string    `json:"currency"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
-	DeletedAt  time.Time `json:"deletedAt"`
-	Deleted    bool      `json:"deleted"`
+	WalletID   uuid.UUID  `json:"walletId"`
+	UserID     uuid.UUID  `json:"userId"`
+	WalletName string     `json:"walletName"`
+	Balance    float64    `json:"balance"`
+	Currency   string     `json:"currency"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	UpdatedAt  time.Time  `json:"updatedAt"`
+	DeletedAt  *time.Time `json:"deletedAt"`
+	Active     bool       `json:"active"`
 }
 
 type WalletUpdate struct {
@@ -35,6 +35,9 @@ type WalletUpdate struct {
 }
 
 var (
-	ErrWalletNotFound = errors.New("error wallet not found")
-	ErrWalletUpToDate = errors.New("wallet is up-to-date")
+	ErrWalletNotFound       = errors.New("error wallet not found")
+	ErrWalletUpToDate       = errors.New("wallet is up-to-date")
+	ErrZeroValueWallet      = errors.New("zero-value wallet")
+	ErrNonZeroBalanceWallet = errors.New("wallet has non-zero balance")
+	ErrReadWalletInfo       = errors.New("failed to read wallet info")
 )

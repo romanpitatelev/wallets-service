@@ -40,7 +40,10 @@ func main() {
 
 	log.Trace().Msg("kafka consumer created")
 
-	svc := service.New(pgStore)
+	svc := service.New(pgStore, service.Config{
+		StaleWalletDuration: 0,
+		PerformCheckPeriod:  0,
+	})
 
 	server := rest.New(svc)
 
@@ -49,6 +52,14 @@ func main() {
 	errGr.Go(func() error {
 		if err := kafkaConsumer.Run(ctx); err != nil {
 			return fmt.Errorf("failed to run kafka consumer: %w", err)
+		}
+
+		return nil
+	})
+
+	errGr.Go(func() error {
+		if err := svc.Run(ctx); err != nil {
+			return fmt.Errorf("failed to run service: %w", err)
 		}
 
 		return nil

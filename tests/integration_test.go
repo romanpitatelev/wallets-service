@@ -46,15 +46,16 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 	var err error
 
-	//	conf := configs.NewConfig()
-
 	s.db, err = store.New(ctx, conf)
 	s.Require().NoError(err)
 
 	err = s.db.Migrate(migrate.Up)
 	s.Require().NoError(err)
 
-	s.service = service.New(s.db)
+	s.service = service.New(s.db, service.Config{
+		StaleWalletDuration: 0,
+		PerformCheckPeriod:  0,
+	})
 
 	s.server = rest.New(s.service)
 
@@ -70,8 +71,12 @@ func (s *IntegrationTestSuite) TearDownSuite() {
 	s.cancelFunc()
 }
 
+func (s *IntegrationTestSuite) TearDownTest() {
+	err := s.db.Truncate(context.Background(), "wallets", "users")
+	s.Require().NoError(err)
+}
+
 func TestIntegrationSetupSuite(t *testing.T) {
-	t.Parallel()
 
 	suite.Run(t, new(IntegrationTestSuite))
 }

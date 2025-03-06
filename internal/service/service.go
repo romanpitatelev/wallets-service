@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/romanpitatelev/wallets-service/internal/models"
@@ -15,14 +16,22 @@ type walletStore interface {
 	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate) (models.Wallet, error)
 	DeleteWallet(ctx context.Context, walletID uuid.UUID) error
 	GetWallets(ctx context.Context) ([]models.Wallet, error)
+	ArchiveStaleWallets(ctx context.Context) error
+}
+
+type Config struct {
+	StaleWalletDuration time.Duration
+	PerformCheckPeriod  time.Duration
 }
 
 type Service struct {
+	cfg         Config
 	walletStore walletStore
 }
 
-func New(walletStore walletStore) *Service {
+func New(walletStore walletStore, cfg Config) *Service {
 	return &Service{
+		cfg:         cfg,
 		walletStore: walletStore,
 	}
 }
@@ -82,4 +91,18 @@ func (s *Service) GetAllWallets(ctx context.Context) ([]models.Wallet, error) {
 	}
 
 	return wallets, nil
+}
+
+func (s *Service) Run(ctx context.Context) error {
+	ticker := time.NewTicker(s.cfg.PerformCheckPeriod)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			s.walletStore.ArchiveStaleWallets(ctx)
+		}
+	}
 }
