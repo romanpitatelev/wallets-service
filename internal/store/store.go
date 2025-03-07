@@ -6,14 +6,15 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // functions from this package are not used
-	"github.com/romanpitatelev/wallets-service/configs"
 	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/rs/zerolog/log"
 	migrate "github.com/rubenv/sql-migrate"
 )
@@ -26,23 +27,26 @@ type DataStore struct {
 	dsn  string
 }
 
-func New(ctx context.Context, conf *configs.Config) (*DataStore, error) {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		conf.PostgresHost,
-		conf.PostgresUser,
-		conf.PostgresPassword,
-		conf.PostgresDatabase,
-		conf.PostgresPort,
-	)
+type Config struct {
+	Dsn string
+}
 
-	pool, err := pgxpool.New(ctx, dsn)
+func New(ctx context.Context, conf Config) (*DataStore, error) {
+
+	pool, err := pgxpool.New(ctx, conf.Dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
+	if err := pool.Ping(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	log.Info().Msg("connected to database")
+
 	return &DataStore{
 		pool: pool,
-		dsn:  dsn,
+		dsn:  conf.Dsn,
 	}, nil
 }
 
@@ -249,19 +253,22 @@ func (d *DataStore) DeleteWallet(ctx context.Context, walletID uuid.UUID) error 
 	return nil
 }
 
-func (d *DataStore) GetWallets(ctx context.Context) ([]models.Wallet, error) {
-	query := `SELECT wallet_id, wallet_name, balance, currency, created_at, updated_at
-				FROM wallets 
-				WHERE deleted_at IS NULL 
-					AND active = true`
+func (d *DataStore) GetWallets(ctx context.Context, request models.GetWalletsRequest) (*models.GetWalletsResponse, error) {
 
-	rows, err := d.pool.Query(ctx, query)
-	if err != nil {
+	var (
+		walletsAll []models.Wallet
+		rows       pgx.Rows
+		err        error
+		totalCount int
+	)
+
+	query, args := d.GetWalletsQuery(request)
+
+	if rows, err = d.pool.Query(ctx, query, args...); err != nil {
 		return nil, fmt.Errorf("error getting all wallets info: %w", err)
 	}
-	defer rows.Close()
 
-	var walletsAll []models.Wallet
+	defer rows.Close()
 
 	for rows.Next() {
 		var wallet models.Wallet
@@ -273,8 +280,8 @@ func (d *DataStore) GetWallets(ctx context.Context) ([]models.Wallet, error) {
 			&wallet.Currency,
 			&wallet.CreatedAt,
 			&wallet.UpdatedAt,
-			&wallet.DeletedAt,
 			&wallet.Active,
+			&totalCount,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error when scanning wallet: %w", err)
@@ -287,7 +294,61 @@ func (d *DataStore) GetWallets(ctx context.Context) ([]models.Wallet, error) {
 		return nil, fmt.Errorf("rows.Err(): %w", err)
 	}
 
-	return walletsAll, nil
+	return &models.GetWalletsResponse{
+		Wallets:    walletsAll,
+		TotalCount: totalCount,
+	}, nil
+}
+
+func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest) (string, []any) {
+	var (
+		sb              strings.Builder
+		args            []any
+		validSortParams = map[string]string{
+			"wallet_id":   "wallet_id",
+			"wallet_name": "wallet_name",
+			"currency":    "currency",
+			"balance":     "balance",
+			"created_at":  "created_at",
+			"updated_at":  "updated_at",
+		}
+	)
+
+	sb.WriteString(`SELECT wallet_id, wallet_name, balance, currency, created_at, updated_at, active
+					COUNT(*) OVER() as total_count
+					FROM wallets
+					WHERE delete_at IS NULL
+						AND active = true`)
+
+	if request.Filter != "" {
+		args = append(args, "%"+request.Filter+"%")
+		sb.WriteString(fmt.Sprintf(` AND concat_ws('', wallet_id, wallet_name, currency, balance, created_at, updated_at) ILIKE $%d`, len(args)))
+	}
+
+	sorting, ok := validSortParams[request.Sorting]
+	if !ok {
+		sorting = "wallet_id"
+	}
+
+	sb.WriteString(" ORDER BY " + sorting)
+	if request.Descending {
+		sb.WriteString(" DESC")
+	}
+
+	if request.Limit == 0 {
+		request.Limit = rest.DefaultLimitPerPage
+	}
+
+	args = append(args, request.Limit)
+
+	sb.WriteString(fmt.Sprintf(" LIMIT %d", len(args)))
+
+	if request.Offset > 0 {
+		args = append(args, request.Offset)
+		sb.WriteString(fmt.Sprintf(" OFFSET %d", len(args)))
+	}
+
+	return sb.String(), args
 }
 
 func (d *DataStore) Truncate(ctx context.Context, tables ...string) error {
@@ -305,7 +366,7 @@ func (d *DataStore) ArchiveStaleWallets(ctx context.Context, checkPeriod time.Du
 	query := fmt.Sprintf(`UPDATE wallets
 				SET active = false
 				WHERE balance = 0 
-				AND updated_at < NOW() - INTERVAL '%d seconds'`, int(checkPeriod.Seconds()))
+				AND updated_at < NOW() - INTERVAL '%d hours'`, int(checkPeriod.Hours()))
 
 	_, err := d.pool.Exec(ctx, query)
 	if err != nil {

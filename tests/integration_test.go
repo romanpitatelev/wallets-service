@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/romanpitatelev/wallets-service/configs"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
@@ -19,6 +18,7 @@ import (
 )
 
 const (
+	pgDSN      = "postgresql://postgres:my_pass@localhost:5432/wallets_db"
 	port       = 8081
 	walletPath = `/api/v1/wallets`
 )
@@ -35,18 +35,9 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancelFunc = cancel
 
-	conf := &configs.Config{
-		BindAddress:      ":8081",
-		PostgresHost:     "localhost",
-		PostgresPort:     "5432",
-		PostgresDatabase: "wallets_db",
-		PostgresUser:     "postgres",
-		PostgresPassword: "my_pass",
-	}
-
 	var err error
 
-	s.db, err = store.New(ctx, conf)
+	s.db, err = store.New(ctx, store.Config{Dsn: pgDSN})
 	s.Require().NoError(err)
 
 	err = s.db.Migrate(migrate.Up)
@@ -57,7 +48,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 		PerformCheckPeriod:  0,
 	})
 
-	s.server = rest.New(s.service)
+	s.server = rest.New(rest.Config{Port: port}, s.service)
 
 	go func() {
 		err = s.server.Run(ctx)

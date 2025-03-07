@@ -4,11 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/rs/zerolog/log"
+)
+
+const (
+	DefaultLimitPerPage = 25
 )
 
 func (s *Server) CreateWallet(w http.ResponseWriter, r *http.Request) {
@@ -150,7 +155,10 @@ func (s *Server) DeleteWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) GetWallets(w http.ResponseWriter, r *http.Request) {
-	wallets, err := s.service.GetAllWallets(r.Context())
+	request := ParseGetRequest(r)
+	ctx := r.Context()
+
+	wallets, err := s.service.GetAllWallets(ctx, request)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to obtain wallets")
 		http.Error(w, "failed to obtain wallets", http.StatusNotFound)
@@ -166,4 +174,36 @@ func (s *Server) GetWallets(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+}
+
+func ParseGetRequest(r *http.Request) models.GetWalletsRequest {
+	queryParams := r.URL.Query()
+
+	parameters := models.GetWalletsRequest{
+		Sorting: queryParams.Get("sorting"),
+		Filter:  queryParams.Get("filter"),
+	}
+
+	var (
+		limit  int64
+		offset int64
+	)
+
+	if d := queryParams.Get("descending"); d != "" {
+		parameters.Descending, _ = strconv.ParseBool(d)
+	}
+
+	if l := queryParams.Get("limit"); l != "" {
+		if limit, _ = strconv.ParseInt(l, 0, 64); limit == 0 {
+			limit = DefaultLimitPerPage
+		}
+		parameters.Limit = int(limit)
+	}
+
+	if o := queryParams.Get("offset"); o != "" {
+		offset, _ = strconv.ParseInt(o, 0, 64)
+		parameters.Offset = int(offset)
+	}
+
+	return parameters
 }

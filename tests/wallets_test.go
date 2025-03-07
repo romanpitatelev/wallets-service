@@ -194,3 +194,51 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 		s.Require().Nil(obtainedWallet.DeletedAt)
 	})
 }
+
+func (s *IntegrationTestSuite) TestGetWallets() {
+	var arrWallets []models.Wallet
+
+	walletOne := models.Wallet{
+		WalletID:   uuid.New(),
+		WalletName: "testWalletOne",
+		Currency:   "RUB",
+	}
+	arrWallets = append(arrWallets, walletOne)
+
+	walletTwo := models.Wallet{
+		WalletID:   uuid.New(),
+		WalletName: "testWalletTwo",
+		Currency:   "TRY",
+	}
+	arrWallets = append(arrWallets, walletTwo)
+
+	walletThree := models.Wallet{
+		WalletID:   uuid.New(),
+		WalletName: "testWalletThre",
+		Currency:   "CNY",
+	}
+	arrWallets = append(arrWallets, walletThree)
+
+	createWallet := func(w models.Wallet) models.Wallet {
+		var createdWallet models.Wallet
+		s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &w, &createdWallet)
+		return createdWallet
+	}
+
+	for i := 0; i < len(arrWallets); i++ {
+		createdWallet := createWallet(arrWallets[i])
+		err := s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2`,
+			259.0+float64(i*100), createdWallet.WalletID)
+		s.Require().NoError(err)
+	}
+
+	s.Run("read successfully with pagination", func() {
+		var response models.GetWalletsResponse
+
+		s.sendRequest(http.MethodGet, walletPath, http.StatusOK, nil, &response)
+
+		s.Require().Len(response.Wallets, len(arrWallets))
+		s.Require().Equal(len(arrWallets), response.TotalCount)
+	})
+
+}

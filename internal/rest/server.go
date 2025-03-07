@@ -15,9 +15,14 @@ import (
 
 const ReadHeaderTimeoutValue = 3
 
+type Config struct {
+	Port int
+}
+
 type Server struct {
 	server  *http.Server
 	service service
+	port    int
 }
 
 type service interface {
@@ -25,18 +30,19 @@ type service interface {
 	GetWallet(ctx context.Context, walletID uuid.UUID) (models.Wallet, error)
 	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate) (models.Wallet, error)
 	DeleteWallet(ctx context.Context, walletID uuid.UUID) error
-	GetAllWallets(ctx context.Context) ([]models.Wallet, error)
+	GetAllWallets(ctx context.Context, request models.GetWalletsRequest) (*models.GetWalletsResponse, error)
 }
 
-func New(service service) *Server {
+func New(conf Config, service service) *Server {
 	router := chi.NewRouter()
 	s := &Server{
 		service: service,
 		server: &http.Server{
-			Addr:              ":8081",
+			Addr:              fmt.Sprintf(":%d", conf.Port),
 			Handler:           router,
 			ReadHeaderTimeout: ReadHeaderTimeoutValue * time.Second,
 		},
+		port: conf.Port,
 	}
 
 	router.Route("/api/v1", func(r chi.Router) {

@@ -20,9 +20,9 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	conf := configs.NewConfig()
+	conf := configs.New()
 
-	pgStore, err := store.New(ctx, conf)
+	pgStore, err := store.New(ctx, store.Config{Dsn: conf.GetPostgresDSN()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to connect to database")
 	}
@@ -33,19 +33,25 @@ func main() {
 
 	log.Info().Msg("successful migration")
 
-	kafkaConsumer, err := consumer.New(pgStore)
+	kafkaConsumer, err := consumer.New(pgStore, consumer.Config{Port: conf.GetKafkaPort()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to create kafka consumer")
 	}
 
+	defer func() {
+		if err = kafkaConsumer.Close(); err != nil {
+			log.Warn().Err(err).Msg("failed to close kafka consumer")
+		}
+	}()
+
 	log.Trace().Msg("kafka consumer created")
 
 	svc := service.New(pgStore, service.Config{
-		StaleWalletDuration: conf.StaleWalletDuration,
-		PerformCheckPeriod:  conf.PerformCheckPeriod,
+		StaleWalletDuration: conf.GetStaleWalletDuration(),
+		PerformCheckPeriod:  conf.GetPerformCheckPeriod(),
 	})
 
-	server := rest.New(svc)
+	server := rest.New(rest.Config{Port: conf.GetAppPort()}, svc)
 
 	errGr, ctx := errgroup.WithContext(ctx)
 
