@@ -42,11 +42,6 @@ type GetWalletsRequest struct {
 	Offset     int    `json:"offset,omitempty"`
 }
 
-type GetWalletsResponse struct {
-	Wallets    []Wallet `json:"wallets"`
-	TotalCount int      `json:"totalCount"`
-}
-
 var (
 	ErrWalletNotFound       = errors.New("error wallet not found")
 	ErrWalletUpToDate       = errors.New("wallet is up-to-date")

@@ -32,3 +32,9 @@ run:
 output:
   formats:
     - format: colored-line-number
+
+issues:
+  exclude-rules:
+    - path: tests/.*
+      linters: 
+        - funlen

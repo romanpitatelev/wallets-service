@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	DefaultLimitPerPage = 25
+	DefaultLimit = 25
 )
 
 func (s *Server) CreateWallet(w http.ResponseWriter, r *http.Request) {
@@ -195,9 +195,12 @@ func ParseGetRequest(r *http.Request) models.GetWalletsRequest {
 
 	if l := queryParams.Get("limit"); l != "" {
 		if limit, _ = strconv.ParseInt(l, 0, 64); limit == 0 {
-			limit = DefaultLimitPerPage
+			limit = DefaultLimit
 		}
+
 		parameters.Limit = int(limit)
+	} else {
+		parameters.Limit = DefaultLimit
 	}
 
 	if o := queryParams.Get("offset"); o != "" {

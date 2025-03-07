@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // functions from this package are not used
 	"github.com/romanpitatelev/wallets-service/internal/models"
-	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/rs/zerolog/log"
 	migrate "github.com/rubenv/sql-migrate"
 )
@@ -32,7 +31,6 @@ type Config struct {
 }
 
 func New(ctx context.Context, conf Config) (*DataStore, error) {
-
 	pool, err := pgxpool.New(ctx, conf.Dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
@@ -232,6 +230,7 @@ func (d *DataStore) DeleteWallet(ctx context.Context, walletID uuid.UUID) error 
 		if errors.Is(err, models.ErrWalletNotFound) {
 			return models.ErrWalletNotFound
 		}
+
 		return fmt.Errorf("failed to fetch current wallet in DeleteWallet() function: %w", err)
 	}
 
@@ -253,13 +252,11 @@ func (d *DataStore) DeleteWallet(ctx context.Context, walletID uuid.UUID) error 
 	return nil
 }
 
-func (d *DataStore) GetWallets(ctx context.Context, request models.GetWalletsRequest) (*models.GetWalletsResponse, error) {
-
+func (d *DataStore) GetWallets(ctx context.Context, request models.GetWalletsRequest) ([]models.Wallet, error) {
 	var (
 		walletsAll []models.Wallet
 		rows       pgx.Rows
 		err        error
-		totalCount int
 	)
 
 	query, args := d.GetWalletsQuery(request)
@@ -281,7 +278,6 @@ func (d *DataStore) GetWallets(ctx context.Context, request models.GetWalletsReq
 			&wallet.CreatedAt,
 			&wallet.UpdatedAt,
 			&wallet.Active,
-			&totalCount,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("error when scanning wallet: %w", err)
@@ -294,10 +290,11 @@ func (d *DataStore) GetWallets(ctx context.Context, request models.GetWalletsReq
 		return nil, fmt.Errorf("rows.Err(): %w", err)
 	}
 
-	return &models.GetWalletsResponse{
-		Wallets:    walletsAll,
-		TotalCount: totalCount,
-	}, nil
+	if len(walletsAll) == 0 {
+		return []models.Wallet{}, nil
+	}
+
+	return walletsAll, nil
 }
 
 func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest) (string, []any) {
@@ -315,9 +312,8 @@ func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest) (string, [
 	)
 
 	sb.WriteString(`SELECT wallet_id, wallet_name, balance, currency, created_at, updated_at, active
-					COUNT(*) OVER() as total_count
 					FROM wallets
-					WHERE delete_at IS NULL
+					WHERE deleted_at IS NULL
 						AND active = true`)
 
 	if request.Filter != "" {
@@ -331,21 +327,18 @@ func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest) (string, [
 	}
 
 	sb.WriteString(" ORDER BY " + sorting)
+
 	if request.Descending {
 		sb.WriteString(" DESC")
 	}
 
-	if request.Limit == 0 {
-		request.Limit = rest.DefaultLimitPerPage
-	}
-
 	args = append(args, request.Limit)
 
-	sb.WriteString(fmt.Sprintf(" LIMIT %d", len(args)))
+	sb.WriteString(fmt.Sprintf(" LIMIT $%d", len(args)))
 
 	if request.Offset > 0 {
 		args = append(args, request.Offset)
-		sb.WriteString(fmt.Sprintf(" OFFSET %d", len(args)))
+		sb.WriteString(fmt.Sprintf(" OFFSET $%d", len(args)))
 	}
 
 	return sb.String(), args
@@ -353,7 +346,7 @@ func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest) (string, [
 
 func (d *DataStore) Truncate(ctx context.Context, tables ...string) error {
 	for _, table := range tables {
-		if _, err := d.pool.Exec(ctx, fmt.Sprintf(`DELETE FROM %s`, table)); err != nil {
+		if _, err := d.pool.Exec(ctx, `DELETE FROM `+table); err != nil {
 			return fmt.Errorf("error truncating wallet %s: %w", table, err)
 		}
 	}
@@ -362,7 +355,6 @@ func (d *DataStore) Truncate(ctx context.Context, tables ...string) error {
 }
 
 func (d *DataStore) ArchiveStaleWallets(ctx context.Context, checkPeriod time.Duration) error {
-
 	query := fmt.Sprintf(`UPDATE wallets
 				SET active = false
 				WHERE balance = 0 
@@ -374,7 +366,6 @@ func (d *DataStore) ArchiveStaleWallets(ctx context.Context, checkPeriod time.Du
 	}
 
 	return nil
-
 }
 
 func (d *DataStore) Exec(ctx context.Context, query string, args ...any) error {

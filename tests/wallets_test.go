@@ -1,3 +1,4 @@
+//nolint:testpackage
 package tests
 
 import (
@@ -24,7 +25,6 @@ func (s *IntegrationTestSuite) TestCreateWallet() {
 		s.Require().Equal(wallet.WalletName, createdWallet.WalletName)
 		s.Require().Equal(0.0, createdWallet.Balance)
 		s.Require().Equal(wallet.Currency, createdWallet.Currency)
-
 	})
 }
 
@@ -196,49 +196,134 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 }
 
 func (s *IntegrationTestSuite) TestGetWallets() {
+	err := s.db.Truncate(context.Background(), "wallets")
+	s.Require().NoError(err)
+
 	var arrWallets []models.Wallet
 
 	walletOne := models.Wallet{
 		WalletID:   uuid.New(),
-		WalletName: "testWalletOne",
+		WalletName: "FirstWallet",
 		Currency:   "RUB",
 	}
 	arrWallets = append(arrWallets, walletOne)
 
 	walletTwo := models.Wallet{
 		WalletID:   uuid.New(),
-		WalletName: "testWalletTwo",
+		WalletName: "SecondWallet",
 		Currency:   "TRY",
 	}
 	arrWallets = append(arrWallets, walletTwo)
 
 	walletThree := models.Wallet{
 		WalletID:   uuid.New(),
-		WalletName: "testWalletThre",
+		WalletName: "ThirdWallet",
 		Currency:   "CNY",
 	}
 	arrWallets = append(arrWallets, walletThree)
 
-	createWallet := func(w models.Wallet) models.Wallet {
-		var createdWallet models.Wallet
-		s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &w, &createdWallet)
-		return createdWallet
+	walletFour := models.Wallet{
+		WalletID:   uuid.New(),
+		WalletName: "FourthWallet",
+		Currency:   "HUF",
 	}
+	arrWallets = append(arrWallets, walletFour)
 
-	for i := 0; i < len(arrWallets); i++ {
-		createdWallet := createWallet(arrWallets[i])
-		err := s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2`,
-			259.0+float64(i*100), createdWallet.WalletID)
-		s.Require().NoError(err)
+	walletFive := models.Wallet{
+		WalletID:   uuid.New(),
+		WalletName: "FifthWallet",
+		Currency:   "KZT",
 	}
+	arrWallets = append(arrWallets, walletFive)
 
-	s.Run("read successfully with pagination", func() {
-		var response models.GetWalletsResponse
+	err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2`,
+		259.0, walletOne.WalletID)
+	s.Require().NoError(err)
 
-		s.sendRequest(http.MethodGet, walletPath, http.StatusOK, nil, &response)
+	err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2`,
+		359.0, walletTwo.WalletID)
+	s.Require().NoError(err)
 
-		s.Require().Len(response.Wallets, len(arrWallets))
-		s.Require().Equal(len(arrWallets), response.TotalCount)
+	err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2`,
+		459.0, walletThree.WalletID)
+	s.Require().NoError(err)
+
+	err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2`,
+		559.0, walletFour.WalletID)
+	s.Require().NoError(err)
+
+	err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2`,
+		659.0, walletFive.WalletID)
+	s.Require().NoError(err)
+
+	createdOne := models.Wallet{}
+	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletOne, &createdOne)
+
+	createdTwo := models.Wallet{}
+	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletTwo, &createdTwo)
+
+	createdThree := models.Wallet{}
+	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletThree, &createdThree)
+
+	createdFour := models.Wallet{}
+	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletFour, &createdFour)
+
+	createdFive := models.Wallet{}
+	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletFive, &createdFive)
+
+	s.Run("read successfully", func() {
+		var wallets []models.Wallet
+
+		s.sendRequest(http.MethodGet, walletPath, http.StatusOK, nil, &wallets)
+
+		s.Require().Len(wallets, len(arrWallets))
 	})
 
+	s.Run("sorted by name with limit 2", func() {
+		var wallets []models.Wallet
+
+		someWalletPath := walletPath + "?sorting=wallet_name&limit=2"
+
+		s.sendRequest(http.MethodGet, someWalletPath, http.StatusOK, nil, &wallets)
+
+		s.Require().Len(wallets, 2)
+		s.Require().Equal(wallets[0].Balance, walletFive.Balance)
+		s.Require().Equal(wallets[1].WalletID, walletOne.WalletID)
+	})
+
+	s.Run("sorted by name with limit 2 and offset 2", func() {
+		var wallets []models.Wallet
+
+		someWalletPath := walletPath + "?sorting=wallet_name&limit=2&offset=2"
+
+		s.sendRequest(http.MethodGet, someWalletPath, http.StatusOK, nil, &wallets)
+
+		s.Require().Len(wallets, 2)
+		s.Require().Equal(wallets[0].Balance, walletFour.Balance)
+		s.Require().Equal(wallets[1].WalletID, walletTwo.WalletID)
+	})
+
+	s.Run("sorted by name with limit 2 and offset 2", func() {
+		var wallets []models.Wallet
+
+		someWalletPath := walletPath + "?sorting=wallet_name&limit=2&offset=2"
+
+		s.sendRequest(http.MethodGet, someWalletPath, http.StatusOK, nil, &wallets)
+
+		s.Require().Len(wallets, 2)
+		s.Require().Equal(wallets[0].Currency, walletFour.Currency)
+		s.Require().Equal(wallets[1].WalletID, walletTwo.WalletID)
+	})
+
+	s.Run("sorted by name with limit 2 and offset 2, descending true", func() {
+		var wallets []models.Wallet
+
+		someWalletPath := walletPath + "?sorting=wallet_name&limit=2&offset=2&descending=true"
+
+		s.sendRequest(http.MethodGet, someWalletPath, http.StatusOK, nil, &wallets)
+
+		s.Require().Len(wallets, 2)
+		s.Require().Equal(wallets[0].Balance, walletFour.Balance)
+		s.Require().Equal(wallets[1].WalletName, walletOne.WalletName)
+	})
 }

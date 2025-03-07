@@ -30,7 +30,7 @@ type service interface {
 	GetWallet(ctx context.Context, walletID uuid.UUID) (models.Wallet, error)
 	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate) (models.Wallet, error)
 	DeleteWallet(ctx context.Context, walletID uuid.UUID) error
-	GetAllWallets(ctx context.Context, request models.GetWalletsRequest) (*models.GetWalletsResponse, error)
+	GetAllWallets(ctx context.Context, request models.GetWalletsRequest) ([]models.Wallet, error)
 }
 
 func New(conf Config, service service) *Server {

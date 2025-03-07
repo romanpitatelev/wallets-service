@@ -16,6 +16,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+//nolint:funlen
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()

@@ -1,3 +1,4 @@
+//nolint:testpackage
 package tests
 
 import (
@@ -50,6 +51,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 	s.server = rest.New(rest.Config{Port: port}, s.service)
 
+	//nolint:testifylint
 	go func() {
 		err = s.server.Run(ctx)
 		s.Require().NoError(err)
@@ -68,6 +70,7 @@ func (s *IntegrationTestSuite) TearDownTest() {
 }
 
 func TestIntegrationSetupSuite(t *testing.T) {
+	t.Parallel()
 
 	suite.Run(t, new(IntegrationTestSuite))
 }
