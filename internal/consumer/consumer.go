@@ -11,9 +11,12 @@ import (
 )
 
 const (
-	port  = "localhost:9094"
 	topic = "users"
 )
+
+type Config struct {
+	Port string
+}
 
 type Consumer struct {
 	consumer sarama.Consumer
@@ -24,8 +27,8 @@ type userStore interface {
 	UpsertUser(ctx context.Context, users models.User) error
 }
 
-func New(store userStore) (*Consumer, error) {
-	consumer, err := sarama.NewConsumer([]string{port}, nil)
+func New(store userStore, conf Config) (*Consumer, error) {
+	consumer, err := sarama.NewConsumer([]string{conf.Port}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kafka consumer in sarama.NewConsumer(): %w", err)
 	}

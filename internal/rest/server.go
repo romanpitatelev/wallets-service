@@ -8,36 +8,52 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/rs/zerolog/log"
 )
 
 const ReadHeaderTimeoutValue = 3
 
+type Config struct {
+	Port int
+}
+
 type Server struct {
 	server  *http.Server
 	service service
+	port    int
 }
 
 type service interface {
-	Add(ctx context.Context, ipAddress string) (time.Time, error)
-	GetVisitsAll(ctx context.Context) (map[string]int, error)
+	CreateWallet(ctx context.Context, wallet models.Wallet) (models.Wallet, error)
+	GetWallet(ctx context.Context, walletID uuid.UUID) (models.Wallet, error)
+	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate) (models.Wallet, error)
+	DeleteWallet(ctx context.Context, walletID uuid.UUID) error
+	GetAllWallets(ctx context.Context, request models.GetWalletsRequest) ([]models.Wallet, error)
 }
 
-func New(service service) (*Server, error) {
+func New(conf Config, service service) *Server {
 	router := chi.NewRouter()
 	s := &Server{
 		service: service,
 		server: &http.Server{
-			Addr:              ":8081",
+			Addr:              fmt.Sprintf(":%d", conf.Port),
 			Handler:           router,
 			ReadHeaderTimeout: ReadHeaderTimeoutValue * time.Second,
 		},
+		port: conf.Port,
 	}
 
-	router.Get("/time", s.TimeNow)
-	router.Get("/visitors", s.GetVisitors)
+	router.Route("/api/v1", func(r chi.Router) {
+		r.Post("/wallets", s.CreateWallet)
+		r.Get("/wallets/{walletId}", s.GetWallet)
+		r.Patch("/wallets/{walletId}", s.UpdateWallet)
+		r.Delete("/wallets/{walletId}", s.DeleteWallet)
+		r.Get("/wallets", s.GetWallets)
+	})
 
-	return s, nil
+	return s
 }
 
 func (s *Server) Run(ctx context.Context) error {

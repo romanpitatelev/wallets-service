@@ -16,13 +16,14 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+//nolint:funlen
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	conf := configs.NewConfig()
+	conf := configs.New()
 
-	pgStore, err := store.New(ctx, conf)
+	pgStore, err := store.New(ctx, store.Config{Dsn: conf.GetPostgresDSN()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to connect to database")
 	}
@@ -33,25 +34,39 @@ func main() {
 
 	log.Info().Msg("successful migration")
 
-	kafkaConsumer, err := consumer.New(pgStore)
+	kafkaConsumer, err := consumer.New(pgStore, consumer.Config{Port: conf.GetKafkaPort()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to create kafka consumer")
 	}
 
+	defer func() {
+		if err = kafkaConsumer.Close(); err != nil {
+			log.Warn().Err(err).Msg("failed to close kafka consumer")
+		}
+	}()
+
 	log.Trace().Msg("kafka consumer created")
 
-	svc := service.New(pgStore)
+	svc := service.New(pgStore, service.Config{
+		StaleWalletDuration: conf.GetStaleWalletDuration(),
+		PerformCheckPeriod:  conf.GetPerformCheckPeriod(),
+	})
 
-	server, err := rest.New(svc)
-	if err != nil {
-		log.Panic().Msg("Failed to create new server")
-	}
+	server := rest.New(rest.Config{Port: conf.GetAppPort()}, svc)
 
 	errGr, ctx := errgroup.WithContext(ctx)
 
 	errGr.Go(func() error {
 		if err := kafkaConsumer.Run(ctx); err != nil {
 			return fmt.Errorf("failed to run kafka consumer: %w", err)
+		}
+
+		return nil
+	})
+
+	errGr.Go(func() error {
+		if err := svc.Run(ctx); err != nil {
+			return fmt.Errorf("failed to run service: %w", err)
 		}
 
 		return nil
