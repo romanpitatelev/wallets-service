@@ -14,6 +14,8 @@ import (
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
+	xrclient "github.com/romanpitatelev/wallets-service/internal/xr/xr_client"
+	xrserver "github.com/romanpitatelev/wallets-service/internal/xr/xr_server"
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stretchr/testify/suite"
 )
@@ -22,6 +24,8 @@ const (
 	pgDSN      = "postgresql://postgres:my_pass@localhost:5432/wallets_db"
 	port       = 8081
 	walletPath = `/api/v1/wallets`
+	xrPort     = 2607
+	xrAddress  = "http://localhost:2607"
 )
 
 type IntegrationTestSuite struct {
@@ -30,6 +34,8 @@ type IntegrationTestSuite struct {
 	db         *store.DataStore
 	service    *service.Service
 	server     *rest.Server
+	xrServer   *xrserver.Server
+	client     *xrclient.Client
 }
 
 func (s *IntegrationTestSuite) SetupSuite() {
@@ -44,10 +50,24 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	err = s.db.Migrate(migrate.Up)
 	s.Require().NoError(err)
 
-	s.service = service.New(s.db, service.Config{
-		StaleWalletDuration: 0,
-		PerformCheckPeriod:  0,
-	})
+	s.xrServer = xrserver.New(xrPort)
+
+	//nolint:testifylint
+	go func() {
+		err := s.xrServer.Run(ctx)
+		s.Require().NoError(err)
+	}()
+
+	s.client = xrclient.New(xrclient.Config{ServerAddress: xrAddress})
+
+	s.service = service.New(
+		s.db,
+		service.Config{
+			StaleWalletDuration: 0,
+			PerformCheckPeriod:  0,
+		},
+		s.client,
+	)
 
 	s.server = rest.New(rest.Config{Port: port}, s.service)
 

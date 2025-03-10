@@ -149,9 +149,9 @@ func (d *DataStore) GetWallet(ctx context.Context, walletID uuid.UUID) (models.W
 	var wallet models.Wallet
 
 	query := `SELECT wallet_id, wallet_name, balance, currency, created_at, updated_at, active
-		FROM wallets
-		WHERE wallet_id = $1
-			AND deleted_at IS NULL`
+				FROM wallets
+				WHERE wallet_id = $1
+					AND deleted_at IS NULL`
 
 	err := d.pool.QueryRow(ctx, query, walletID).Scan(
 		&wallet.WalletID,
@@ -173,7 +173,7 @@ func (d *DataStore) GetWallet(ctx context.Context, walletID uuid.UUID) (models.W
 	return wallet, nil
 }
 
-func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoWallet models.WalletUpdate) (models.Wallet, error) {
+func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoWallet models.WalletUpdate, rate float64) (models.Wallet, error) {
 	currentWallet, err := d.GetWallet(ctx, walletID)
 	if err != nil {
 		return models.Wallet{}, fmt.Errorf("failed to fetch current wallet: %w", err)
@@ -188,8 +188,8 @@ func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInf
 	}
 
 	query := `UPDATE wallets
-		SET wallet_name = $1, currency = $2, updated_at = $3
-		WHERE wallet_id = $4 AND deleted_at IS NULL
+		SET wallet_name = $1, currency = $2, balance = $3 * balance, updated_at = $4
+		WHERE wallet_id = $5 AND deleted_at IS NULL
 		RETURNING wallet_id, wallet_name, balance, currency, created_at, updated_at, deleted_at, active`
 
 	updatedAt := time.Now()
@@ -197,6 +197,7 @@ func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInf
 	row := d.pool.QueryRow(ctx, query,
 		newInfoWallet.WalletName,
 		newInfoWallet.Currency,
+		rate,
 		updatedAt,
 		walletID,
 	)

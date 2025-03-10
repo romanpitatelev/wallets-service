@@ -10,13 +10,19 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const defaultRate = 1.0
+
 type walletStore interface {
 	CreateWallet(ctx context.Context, wallet models.Wallet) (models.Wallet, error)
 	GetWallet(ctx context.Context, walletID uuid.UUID) (models.Wallet, error)
-	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate) (models.Wallet, error)
+	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate, rate float64) (models.Wallet, error)
 	DeleteWallet(ctx context.Context, walletID uuid.UUID) error
 	GetWallets(ctx context.Context, request models.GetWalletsRequest) ([]models.Wallet, error)
 	ArchiveStaleWallets(ctx context.Context, checkPeriod time.Duration) error
+}
+
+type xrClient interface {
+	GetRate(ctx context.Context, from string, to string) (float64, error)
 }
 
 type Config struct {
@@ -27,12 +33,14 @@ type Config struct {
 type Service struct {
 	cfg         Config
 	walletStore walletStore
+	xrClient    xrClient
 }
 
-func New(walletStore walletStore, cfg Config) *Service {
+func New(walletStore walletStore, cfg Config, xrClient xrClient) *Service {
 	return &Service{
 		cfg:         cfg,
 		walletStore: walletStore,
+		xrClient:    xrClient,
 	}
 }
 
@@ -66,7 +74,21 @@ func (s *Service) GetWallet(ctx context.Context, walletID uuid.UUID) (models.Wal
 func (s *Service) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoWallet models.WalletUpdate) (models.Wallet, error) {
 	log.Info().Str("walletID", walletID.String()).Msg("Updating wallet")
 
-	updatedWallet, err := s.walletStore.UpdateWallet(ctx, walletID, newInfoWallet)
+	dbWallet, err := s.walletStore.GetWallet(ctx, walletID)
+	if err != nil {
+		return models.Wallet{}, fmt.Errorf("wallet not found: %w", err)
+	}
+
+	rate := defaultRate
+
+	if dbWallet.Currency != newInfoWallet.Currency {
+		rate, err = s.xrClient.GetRate(ctx, dbWallet.Currency, newInfoWallet.Currency)
+		if err != nil {
+			return models.Wallet{}, fmt.Errorf("failed to obtain exchange rate: %w", err)
+		}
+	}
+
+	updatedWallet, err := s.walletStore.UpdateWallet(ctx, walletID, newInfoWallet, rate)
 	if err != nil {
 		return models.Wallet{}, fmt.Errorf("failed to update wallet: %w", err)
 	}

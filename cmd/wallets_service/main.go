@@ -11,6 +11,7 @@ import (
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
+	xrclient "github.com/romanpitatelev/wallets-service/internal/xr/xr_client"
 	"github.com/rs/zerolog/log"
 	migrate "github.com/rubenv/sql-migrate"
 	"golang.org/x/sync/errgroup"
@@ -47,10 +48,16 @@ func main() {
 
 	log.Trace().Msg("kafka consumer created")
 
-	svc := service.New(pgStore, service.Config{
-		StaleWalletDuration: conf.GetStaleWalletDuration(),
-		PerformCheckPeriod:  conf.GetPerformCheckPeriod(),
-	})
+	client := xrclient.New(xrclient.Config{ServerAddress: conf.GetXRServerAddress()})
+
+	svc := service.New(
+		pgStore,
+		service.Config{
+			StaleWalletDuration: conf.GetStaleWalletDuration(),
+			PerformCheckPeriod:  conf.GetPerformCheckPeriod(),
+		},
+		client,
+	)
 
 	server := rest.New(rest.Config{Port: conf.GetAppPort()}, svc)
 

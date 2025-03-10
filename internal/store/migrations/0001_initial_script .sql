@@ -1,7 +1,7 @@
 -- +migrate Up
 
 CREATE TABLE users (
-    user_id UUID UNIQUE PRIMARY KEY,
+    user_id INTEGER UNIQUE PRIMARY KEY,
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 

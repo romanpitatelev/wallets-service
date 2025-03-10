@@ -47,4 +47,14 @@ var (
 	ErrWalletUpToDate       = errors.New("wallet is up-to-date")
 	ErrZeroValueWallet      = errors.New("zero-value wallet")
 	ErrNonZeroBalanceWallet = errors.New("wallet has non-zero balance")
+	ErrWrongCurrency        = errors.New("wrong currency")
 )
+
+type XRRequest struct {
+	FromCurrency string `json:"fromCurrency"`
+	ToCurrency   string `json:"toCurrency"`
+}
+
+type XRResponse struct {
+	Rate float64 `json:"rate"`
+}

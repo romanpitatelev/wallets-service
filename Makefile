@@ -1,6 +1,6 @@
 build:
 	@echo 'Building binary ...'
-	go build -o bin/main ./cmd/wallets-service/main.go
+	go build -o bin/main ./cmd/wallets_service/main.go
 
 run: build
 	@echo 'Running the project ...'
