@@ -14,8 +14,8 @@ import (
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
-	xrclient "github.com/romanpitatelev/wallets-service/internal/xr/xr_client"
-	xrserver "github.com/romanpitatelev/wallets-service/internal/xr/xr_server"
+	xrclient "github.com/romanpitatelev/wallets-service/internal/xr/xr-client"
+	xrserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-server"
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stretchr/testify/suite"
 )

@@ -5,7 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	xrserver "github.com/romanpitatelev/wallets-service/internal/xr/xr_server"
+	xrserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-server"
 	"github.com/rs/zerolog/log"
 )
 

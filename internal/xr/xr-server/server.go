@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -17,12 +16,10 @@ import (
 
 const (
 	XRReadHeaderTimeoutValue = 3
-	roundNumber              = 10000
 )
 
 type Server struct {
 	server *http.Server
-	port   int
 }
 
 func New(port int) *Server {
@@ -33,7 +30,6 @@ func New(port int) *Server {
 			Handler:           router,
 			ReadHeaderTimeout: XRReadHeaderTimeoutValue * time.Second,
 		},
-		port: port,
 	}
 
 	router.Route("/api/v1", func(r chi.Router) {
@@ -47,7 +43,8 @@ func (s *Server) Run(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 
-		if err := s.server.Shutdown(ctx); err != nil {
+		//nolint:contextcheck
+		if err := s.server.Shutdown(context.Background()); err != nil {
 			log.Warn().Err(err).Msg("failed to shutdown xr server")
 		}
 	}()
@@ -71,7 +68,7 @@ func (s *Server) GetExchangeRate(w http.ResponseWriter, r *http.Request) {
 		"RUB": 1.0,
 		"USD": 90.0,  //nolint:mnd
 		"EUR": 100.0, //nolint:mnd
-		"CNY": 12.0,  //nolint:mnd
+		"CNY": 12.3,  //nolint:mnd
 		"CHF": 101.0, //nolint:mnd
 		"GBP": 115.0, //nolint:mnd
 		"KZT": 0.18,  //nolint:mnd
@@ -88,9 +85,8 @@ func (s *Server) GetExchangeRate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rate := fromXR / toXR
-	rateRounded := math.Round(rate*roundNumber) / roundNumber
 
-	response := models.XRResponse{Rate: rateRounded}
+	response := models.XRResponse{Rate: rate}
 
 	s.okResponse(w, http.StatusOK, response)
 }
@@ -99,7 +95,7 @@ func (s *Server) errorResponse(w http.ResponseWriter, errorText string, err erro
 	statusCode := http.StatusInternalServerError
 
 	if errors.Is(err, models.ErrWrongCurrency) {
-		statusCode = http.StatusNotFound
+		statusCode = http.StatusUnprocessableEntity
 	}
 
 	errResp := fmt.Errorf("%s: %w", errorText, err).Error()

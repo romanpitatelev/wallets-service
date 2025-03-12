@@ -196,7 +196,7 @@ func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInf
 
 	row := d.pool.QueryRow(ctx, query,
 		newInfoWallet.WalletName,
-		newInfoWallet.Currency,
+		strings.ToUpper(newInfoWallet.Currency),
 		rate,
 		updatedAt,
 		walletID,

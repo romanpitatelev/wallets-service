@@ -101,7 +101,7 @@ func generateUser() User {
 		log.Error().Err(err).Msg("error generating random user ID")
 	}
 
-	deleted, err := randonDeleted()
+	deleted, err := randomDeleted()
 	if err != nil {
 		log.Error().Err(err).Msg("error generating deleted value for user")
 	}
@@ -177,7 +177,7 @@ func sendUserToKafka(producer sarama.SyncProducer, topic string, user User) erro
 	return nil
 }
 
-func randonDeleted() (bool, error) {
+func randomDeleted() (bool, error) {
 	randNum, err := rand.Int(rand.Reader, big.NewInt(int64(deletedRandNum)))
 	if err != nil {
 		return false, fmt.Errorf("random number generation error when creating metric called deleted: %w", err)

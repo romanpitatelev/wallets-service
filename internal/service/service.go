@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -81,7 +82,7 @@ func (s *Service) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoW
 
 	rate := defaultRate
 
-	if dbWallet.Currency != newInfoWallet.Currency {
+	if dbWallet.Currency != strings.ToUpper(newInfoWallet.Currency) {
 		rate, err = s.xrClient.GetRate(ctx, dbWallet.Currency, newInfoWallet.Currency)
 		if err != nil {
 			return models.Wallet{}, fmt.Errorf("failed to obtain exchange rate: %w", err)

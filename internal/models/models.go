@@ -43,6 +43,7 @@ type GetWalletsRequest struct {
 }
 
 var (
+	ErrWalletEmptyName      = errors.New("wallet name cannot be empty")
 	ErrWalletNotFound       = errors.New("error wallet not found")
 	ErrWalletUpToDate       = errors.New("wallet is up-to-date")
 	ErrZeroValueWallet      = errors.New("zero-value wallet")

@@ -3,11 +3,23 @@ package tests
 
 import (
 	"context"
+	"math"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/romanpitatelev/wallets-service/internal/models"
 )
+
+const (
+	balanceTest = 9000.0
+	epsilon     = 0.0001
+)
+
+type Currency struct {
+	Name  string
+	Value float64
+}
 
 func (s *IntegrationTestSuite) TestCreateWallet() {
 	wallet := models.Wallet{
@@ -78,6 +90,10 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 
 	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &wallet, &createdWallet)
 
+	err := s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2`,
+		balanceTest, createdWallet.WalletID)
+	s.Require().NoError(err)
+
 	s.Run("wallet not found", func() {
 		walletIDNonExistent := uuid.New().String()
 		walletIDPath := walletPath + "/" + walletIDNonExistent
@@ -98,12 +114,15 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 
 		s.Require().Equal(updatedWallet.WalletName, createdWallet.WalletName)
 		s.Require().Equal(updatedWallet.Currency, createdWallet.Currency)
+		s.Require().Equal(createdWallet.Balance, balanceTest)
 	})
 
 	s.Run("currency updated successfully", func() {
+		cny := Currency{Name: "CNY", Value: 12.3}
+
 		updatedWallet := models.WalletUpdate{
 			WalletName: createdWallet.WalletName,
-			Currency:   "CNY",
+			Currency:   cny.Name,
 		}
 
 		uuidString := createdWallet.WalletID.String()
@@ -111,8 +130,43 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 
 		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &createdWallet)
 
+		expectedBalance := balanceTest / cny.Value
+
 		s.Require().Equal(updatedWallet.WalletName, createdWallet.WalletName)
 		s.Require().Equal(updatedWallet.Currency, createdWallet.Currency)
+		s.Require().True(math.Abs(createdWallet.Balance-expectedBalance) < epsilon)
+	})
+
+	s.Run("lowercase currency updated successfully", func() {
+		rsd := Currency{Name: "rsd", Value: 0.83}
+
+		updatedWallet := models.WalletUpdate{
+			WalletName: createdWallet.WalletName,
+			Currency:   rsd.Name,
+		}
+
+		uuidString := createdWallet.WalletID.String()
+		walletIDPath := walletPath + "/" + uuidString
+
+		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &createdWallet)
+
+		expectedBalance := balanceTest / rsd.Value
+
+		s.Require().Equal(updatedWallet.WalletName, createdWallet.WalletName)
+		s.Require().Equal(strings.ToUpper(updatedWallet.Currency), createdWallet.Currency)
+		s.Require().True(math.Abs(createdWallet.Balance-expectedBalance) < epsilon)
+	})
+
+	s.Run("unprocessible currency", func() {
+		updatedWallet := models.WalletUpdate{
+			WalletName: createdWallet.WalletName,
+			Currency:   "NIO",
+		}
+
+		uuidString := createdWallet.WalletID.String()
+		walletIDPath := walletPath + "/" + uuidString
+
+		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusUnprocessableEntity, &updatedWallet, nil)
 	})
 
 	s.Run("nothing to update", func() {
@@ -124,12 +178,10 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString
 
-		var updateWalletAnother models.Wallet
+		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &createdWallet)
 
-		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &updateWalletAnother)
-
-		s.Require().Equal(updatedWallet.WalletName, updateWalletAnother.WalletName)
-		s.Require().Equal(updatedWallet.Currency, updateWalletAnother.Currency)
+		s.Require().Equal(updatedWallet.WalletName, createdWallet.WalletName)
+		s.Require().Equal(updatedWallet.Currency, createdWallet.Currency)
 	})
 }
 

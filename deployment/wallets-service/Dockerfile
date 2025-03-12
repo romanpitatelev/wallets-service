@@ -4,11 +4,11 @@ COPY ../../go.mod ../../go.sum ./
 RUN go mod download
 
 COPY ../.. .
-RUN go build -o wallets_service ./cmd/wallets_service/main.go
+RUN go build -o wallets-service ./cmd/wallets-service/main.go
 
 FROM alpine:latest
 WORKDIR /app
-COPY --from=builder /app/wallets_service .
+COPY --from=builder /app/wallets-service .
 
 EXPOSE 8081
 CMD ["./wallets-service"]

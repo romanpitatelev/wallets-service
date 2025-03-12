@@ -11,7 +11,7 @@ import (
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
-	xrclient "github.com/romanpitatelev/wallets-service/internal/xr/xr_client"
+	xrclient "github.com/romanpitatelev/wallets-service/internal/xr/xr-client"
 	"github.com/rs/zerolog/log"
 	migrate "github.com/rubenv/sql-migrate"
 	"golang.org/x/sync/errgroup"

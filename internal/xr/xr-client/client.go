@@ -34,7 +34,7 @@ func (c *Client) GetRate(ctx context.Context, from string, to string) (float64, 
 		return 0.0, fmt.Errorf("xr client: failed to create request: %w", err)
 	}
 
-	log.Info().Msgf("this is request from client GetRate function: %v", request)
+	log.Info().Msgf("this request is from client GetRate function: %v", request)
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
@@ -47,15 +47,18 @@ func (c *Client) GetRate(ctx context.Context, from string, to string) (float64, 
 		}
 	}()
 
-	if response.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("status code not OK: %w", err)
+	switch {
+	case response.StatusCode == http.StatusUnprocessableEntity:
+		return 0.0, models.ErrWrongCurrency
+	case response.StatusCode != http.StatusOK:
+		return 0.0, fmt.Errorf("status code not OK: %w", err)
+	default:
+		var resp models.XRResponse
+
+		if err = json.NewDecoder(response.Body).Decode(&resp); err != nil {
+			return 0.0, fmt.Errorf("xr client: error decoding response body: %w", err)
+		}
+
+		return resp.Rate, nil
 	}
-
-	var resp models.XRResponse
-
-	if err = json.NewDecoder(response.Body).Decode(&resp); err != nil {
-		return 0.0, fmt.Errorf("xr client: error decoding response body: %w", err)
-	}
-
-	return resp.Rate, nil
 }
