@@ -11,6 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+	jwtclaims "github.com/romanpitatelev/wallets-service/internal/jwt-claims"
+	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
@@ -22,7 +25,7 @@ import (
 
 const (
 	pgDSN      = "postgresql://postgres:my_pass@localhost:5432/wallets_db"
-	port       = 8081
+	port       = 5003
 	walletPath = `/api/v1/wallets`
 	xrPort     = 2607
 	xrAddress  = "http://localhost:2607"
@@ -36,6 +39,7 @@ type IntegrationTestSuite struct {
 	server     *rest.Server
 	xrServer   *xrserver.Server
 	client     *xrclient.Client
+	jwtClaims  *jwtclaims.Claims
 }
 
 func (s *IntegrationTestSuite) SetupSuite() {
@@ -69,7 +73,9 @@ func (s *IntegrationTestSuite) SetupSuite() {
 		s.client,
 	)
 
-	s.server = rest.New(rest.Config{Port: port}, s.service)
+	s.jwtClaims = jwtclaims.New()
+
+	s.server = rest.New(rest.Config{Port: port}, s.service, s.jwtClaims.GetPublicKey())
 
 	//nolint:testifylint
 	go func() {
@@ -95,7 +101,7 @@ func TestIntegrationSetupSuite(t *testing.T) {
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
-func (s *IntegrationTestSuite) sendRequest(method, path string, status int, entity, result any) {
+func (s *IntegrationTestSuite) sendRequest(method, path string, status int, entity, result any, user models.User) {
 	body, err := json.Marshal(entity)
 	s.Require().NoError(err)
 
@@ -106,7 +112,8 @@ func (s *IntegrationTestSuite) sendRequest(method, path string, status int, enti
 		fmt.Sprintf("http://localhost:%d%s", port, path), bytes.NewReader(body))
 	s.Require().NoError(err, "fail to create request")
 
-	request.Header.Set("Content-Type", "application/json")
+	token := s.getToken(user)
+	request.Header.Set("Authorization", "Bearer "+token)
 
 	client := http.Client{}
 
@@ -139,4 +146,22 @@ func (s *IntegrationTestSuite) sendRequest(method, path string, status int, enti
 
 	err = json.NewDecoder(response.Body).Decode(result)
 	s.Require().NoError(err)
+}
+
+func (s *IntegrationTestSuite) getToken(user models.User) string {
+	claims := jwtclaims.Claims{
+		UserID: user.UserID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	privateKey, err := jwtclaims.ReadPrivateKey()
+	s.Require().NoError(err)
+
+	token, err := claims.GenerateToken(privateKey)
+	s.Require().NoError(err)
+
+	return token
 }

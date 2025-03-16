@@ -1,12 +1,13 @@
 -- +migrate Up
 
 CREATE TABLE users (
-    user_id INTEGER UNIQUE PRIMARY KEY,
+    user_id UUID PRIMARY KEY,
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
 CREATE TABLE wallets (
     wallet_id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(user_id),
     wallet_name VARCHAR NOT NULL,
     balance NUMERIC NOT NULL DEFAULT 0 CHECK (balance >= 0),
     currency VARCHAR NOT NULL,

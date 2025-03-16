@@ -8,6 +8,7 @@ import (
 
 	"github.com/romanpitatelev/wallets-service/configs"
 	"github.com/romanpitatelev/wallets-service/internal/consumer"
+	jwtclaims "github.com/romanpitatelev/wallets-service/internal/jwt-claims"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
@@ -46,7 +47,7 @@ func main() {
 		}
 	}()
 
-	log.Trace().Msg("kafka consumer created")
+	log.Info().Msg("kafka consumer created")
 
 	client := xrclient.New(xrclient.Config{ServerAddress: conf.GetXRServerAddress()})
 
@@ -59,7 +60,9 @@ func main() {
 		client,
 	)
 
-	server := rest.New(rest.Config{Port: conf.GetAppPort()}, svc)
+	jwtClaims := jwtclaims.New()
+
+	server := rest.New(rest.Config{Port: conf.GetAppPort()}, svc, jwtClaims.GetPublicKey())
 
 	errGr, ctx := errgroup.WithContext(ctx)
 

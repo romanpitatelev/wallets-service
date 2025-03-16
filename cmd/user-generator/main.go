@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
+	"github.com/google/uuid"
 	"github.com/goombaio/namegenerator"
 	"github.com/rs/zerolog/log"
 )
@@ -28,12 +29,12 @@ const (
 )
 
 type User struct {
-	UserID    int    `json:"userid"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Gender    string `json:"gender"`
-	Age       int    `json:"age"`
-	Deleted   bool   `json:"deleted"`
+	UserID    uuid.UUID `json:"userid"`
+	FirstName string    `json:"firstName"`
+	LastName  string    `json:"lastName"`
+	Gender    string    `json:"gender"`
+	Age       int       `json:"age"`
+	Deleted   bool      `json:"deleted"`
 }
 
 func main() {
@@ -96,10 +97,7 @@ func generateUser() User {
 		age = defaultAge
 	}
 
-	userID, err := rand.Int(rand.Reader, big.NewInt(int64(numberOfDifferentUsers)))
-	if err != nil {
-		log.Error().Err(err).Msg("error generating random user ID")
-	}
+	userID := uuid.New()
 
 	deleted, err := randomDeleted()
 	if err != nil {
@@ -107,7 +105,7 @@ func generateUser() User {
 	}
 
 	return User{
-		UserID:    int(userID.Int64()),
+		UserID:    userID,
 		FirstName: capitalizeFirstLetter(names[0]),
 		LastName:  capitalizeFirstLetter(names[1]),
 		Gender:    gender,

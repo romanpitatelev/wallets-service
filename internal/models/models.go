@@ -13,8 +13,8 @@ type IP struct {
 }
 
 type User struct {
-	UserID    int       `json:"userId"`
-	DeletedAt time.Time `json:"deletedAt"`
+	UserID    uuid.UUID  `json:"userId"`
+	DeletedAt *time.Time `json:"deletedAt"`
 }
 
 type Wallet struct {
@@ -30,8 +30,9 @@ type Wallet struct {
 }
 
 type WalletUpdate struct {
-	WalletName string `json:"walletName"`
-	Currency   string `json:"currency"`
+	WalletName string    `json:"walletName"`
+	UserID     uuid.UUID `json:"userId"`
+	Currency   string    `json:"currency"`
 }
 
 type GetWalletsRequest struct {
@@ -49,6 +50,9 @@ var (
 	ErrZeroValueWallet      = errors.New("zero-value wallet")
 	ErrNonZeroBalanceWallet = errors.New("wallet has non-zero balance")
 	ErrWrongCurrency        = errors.New("wrong currency")
+	ErrInvalidToken         = errors.New("invalid token")
+	ErrInvalidSigningMethod = errors.New("invalid signing method")
+	ErrWrongUserID          = errors.New("wrong userID")
 )
 
 type XRRequest struct {
@@ -58,4 +62,10 @@ type XRRequest struct {
 
 type XRResponse struct {
 	Rate float64 `json:"rate"`
+}
+
+type UserInfo struct {
+	UserID uuid.UUID `json:"userId"`
+	Email  string    `json:"email"`
+	Role   string    `json:"role"`
 }

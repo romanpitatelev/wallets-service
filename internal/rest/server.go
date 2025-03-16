@@ -2,11 +2,13 @@ package rest
 
 import (
 	"context"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/romanpitatelev/wallets-service/internal/models"
@@ -23,17 +25,18 @@ type Server struct {
 	server  *http.Server
 	service service
 	port    int
+	key     *rsa.PublicKey
 }
 
 type service interface {
-	CreateWallet(ctx context.Context, wallet models.Wallet) (models.Wallet, error)
-	GetWallet(ctx context.Context, walletID uuid.UUID) (models.Wallet, error)
-	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate) (models.Wallet, error)
-	DeleteWallet(ctx context.Context, walletID uuid.UUID) error
-	GetAllWallets(ctx context.Context, request models.GetWalletsRequest) ([]models.Wallet, error)
+	CreateWallet(ctx context.Context, wallet models.Wallet, userID uuid.UUID) (models.Wallet, error)
+	GetWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) (models.Wallet, error)
+	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate, userID uuid.UUID) (models.Wallet, error)
+	DeleteWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) error
+	GetAllWallets(ctx context.Context, request models.GetWalletsRequest, userID uuid.UUID) ([]models.Wallet, error)
 }
 
-func New(conf Config, service service) *Server {
+func New(conf Config, service service, key *rsa.PublicKey) *Server {
 	router := chi.NewRouter()
 	s := &Server{
 		service: service,
@@ -43,9 +46,13 @@ func New(conf Config, service service) *Server {
 			ReadHeaderTimeout: ReadHeaderTimeoutValue * time.Second,
 		},
 		port: conf.Port,
+		key:  key,
 	}
 
 	router.Route("/api/v1", func(r chi.Router) {
+		r.Use(middleware.Recoverer)
+		r.Use(s.jwtAuth)
+
 		r.Post("/wallets", s.CreateWallet)
 		r.Get("/wallets/{walletId}", s.GetWallet)
 		r.Patch("/wallets/{walletId}", s.UpdateWallet)

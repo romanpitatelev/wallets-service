@@ -26,15 +26,26 @@ func (s *Server) CreateWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := r.Context()
+	userInfo := s.getUserInfo(ctx)
+
 	validWallet, err := s.ValidateWallet(wallet)
 	if err != nil {
 		log.Error().Err(err).Msg("wallet has failed validation check")
-		http.Error(w, "validation error", http.StatusBadRequest)
+		http.Error(w, "wallet validation error", http.StatusBadRequest)
 
 		return
 	}
 
-	createdWallet, err := s.service.CreateWallet(r.Context(), validWallet)
+	validateUser, err := s.ValidateUser(wallet.UserID, userInfo.UserID)
+	if err != nil {
+		log.Error().Err(err).Msg("user has failed validation check")
+		http.Error(w, "user validation error", http.StatusNotFound)
+
+		return
+	}
+
+	createdWallet, err := s.service.CreateWallet(r.Context(), validWallet, validateUser)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create wallet")
 		http.Error(w, "error", http.StatusInternalServerError)
@@ -63,7 +74,22 @@ func (s *Server) GetWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wallet, err := s.service.GetWallet(r.Context(), walletID)
+	ctx := r.Context()
+	userInfo := s.getUserInfo(ctx)
+
+	if walletID == uuid.Nil {
+		http.Error(w, "walletID empty", http.StatusBadRequest)
+
+		return
+	}
+
+	if userInfo.UserID == uuid.Nil {
+		http.Error(w, "userID empty", http.StatusBadRequest)
+
+		return
+	}
+
+	wallet, err := s.service.GetWallet(r.Context(), walletID, userInfo.UserID)
 	if err != nil {
 		if errors.Is(err, models.ErrWalletNotFound) {
 			log.Error().Err(err).Msg("wallet not found in GetWallet()")
@@ -99,6 +125,9 @@ func (s *Server) UpdateWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := r.Context()
+	userInfo := s.getUserInfo(ctx)
+
 	var updatedDecodedWallet models.WalletUpdate
 
 	if err := json.NewDecoder(r.Body).Decode(&updatedDecodedWallet); err != nil {
@@ -108,7 +137,7 @@ func (s *Server) UpdateWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedWallet, err := s.service.UpdateWallet(r.Context(), walletID, updatedDecodedWallet)
+	updatedWallet, err := s.service.UpdateWallet(r.Context(), walletID, updatedDecodedWallet, userInfo.UserID)
 
 	switch {
 	case errors.Is(err, models.ErrWalletNotFound):
@@ -149,7 +178,10 @@ func (s *Server) DeleteWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.service.DeleteWallet(r.Context(), walletID)
+	ctx := r.Context()
+	userInfo := s.getUserInfo(ctx)
+
+	err = s.service.DeleteWallet(r.Context(), walletID, userInfo.UserID)
 
 	switch {
 	case errors.Is(err, models.ErrWalletNotFound):
@@ -176,8 +208,9 @@ func (s *Server) DeleteWallet(w http.ResponseWriter, r *http.Request) {
 func (s *Server) GetWallets(w http.ResponseWriter, r *http.Request) {
 	request := ParseGetRequest(r)
 	ctx := r.Context()
+	userInfo := s.getUserInfo(ctx)
 
-	wallets, err := s.service.GetAllWallets(ctx, request)
+	wallets, err := s.service.GetAllWallets(ctx, request, userInfo.UserID)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to obtain wallets")
 		http.Error(w, "failed to obtain wallets", http.StatusNotFound)
@@ -185,7 +218,7 @@ func (s *Server) GetWallets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(wallets); err != nil {
@@ -239,4 +272,12 @@ func (s *Server) ValidateWallet(wallet models.Wallet) (models.Wallet, error) {
 	wallet.Active = true
 
 	return wallet, nil
+}
+
+func (s *Server) ValidateUser(walletID uuid.UUID, userID uuid.UUID) (uuid.UUID, error) {
+	if walletID != userID {
+		return userID, models.ErrWrongUserID
+	}
+
+	return userID, nil
 }

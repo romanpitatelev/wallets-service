@@ -114,13 +114,14 @@ func (d *DataStore) UpsertUser(ctx context.Context, users models.User) error {
 	return nil
 }
 
-func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet) (models.Wallet, error) {
-	query := `INSERT INTO wallets (wallet_id, wallet_name, currency)
-		VALUES ($1, $2, $3)
-		RETURNING wallet_id, wallet_name, balance, currency, created_at, updated_at, active`
+func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet, userID uuid.UUID) (models.Wallet, error) {
+	query := `INSERT INTO wallets (wallet_id, user_id, wallet_name, currency)
+		VALUES ($1, $2, $3, $4)
+		RETURNING wallet_id, user_id, wallet_name, balance, currency, created_at, updated_at, active`
 
 	row := d.pool.QueryRow(ctx, query,
 		wallet.WalletID,
+		userID,
 		wallet.WalletName,
 		wallet.Currency,
 	)
@@ -129,6 +130,7 @@ func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet) (mod
 
 	err := row.Scan(
 		&createdWallet.WalletID,
+		&createdWallet.UserID,
 		&createdWallet.WalletName,
 		&createdWallet.Balance,
 		&createdWallet.Currency,
@@ -145,16 +147,16 @@ func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet) (mod
 	return createdWallet, nil
 }
 
-func (d *DataStore) GetWallet(ctx context.Context, walletID uuid.UUID) (models.Wallet, error) {
+func (d *DataStore) GetWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) (models.Wallet, error) {
 	var wallet models.Wallet
 
-	query := `SELECT wallet_id, wallet_name, balance, currency, created_at, updated_at, active
+	query := `SELECT wallet_id, user_id, wallet_name, balance, currency, created_at, updated_at, active
 				FROM wallets
-				WHERE wallet_id = $1
-					AND deleted_at IS NULL`
+				WHERE wallet_id = $1 AND user_id = $2 AND deleted_at IS NULL`
 
-	err := d.pool.QueryRow(ctx, query, walletID).Scan(
+	err := d.pool.QueryRow(ctx, query, walletID, userID).Scan(
 		&wallet.WalletID,
+		&wallet.UserID,
 		&wallet.WalletName,
 		&wallet.Balance,
 		&wallet.Currency,
@@ -173,8 +175,9 @@ func (d *DataStore) GetWallet(ctx context.Context, walletID uuid.UUID) (models.W
 	return wallet, nil
 }
 
-func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoWallet models.WalletUpdate, rate float64) (models.Wallet, error) {
-	currentWallet, err := d.GetWallet(ctx, walletID)
+//nolint:lll
+func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoWallet models.WalletUpdate, rate float64, userID uuid.UUID) (models.Wallet, error) {
+	currentWallet, err := d.GetWallet(ctx, walletID, userID)
 	if err != nil {
 		return models.Wallet{}, fmt.Errorf("failed to fetch current wallet: %w", err)
 	}
@@ -189,8 +192,8 @@ func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInf
 
 	query := `UPDATE wallets
 		SET wallet_name = $1, currency = $2, balance = $3 * balance, updated_at = $4
-		WHERE wallet_id = $5 AND deleted_at IS NULL
-		RETURNING wallet_id, wallet_name, balance, currency, created_at, updated_at, deleted_at, active`
+		WHERE wallet_id = $5 AND user_id = $6 AND deleted_at IS NULL
+		RETURNING wallet_id, user_id, wallet_name, balance, currency, created_at, updated_at, deleted_at, active`
 
 	updatedAt := time.Now()
 
@@ -200,12 +203,14 @@ func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInf
 		rate,
 		updatedAt,
 		walletID,
+		userID,
 	)
 
 	var wallet models.Wallet
 
 	err = row.Scan(
 		&wallet.WalletID,
+		&wallet.UserID,
 		&wallet.WalletName,
 		&wallet.Balance,
 		&wallet.Currency,
@@ -225,8 +230,8 @@ func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInf
 	return wallet, nil
 }
 
-func (d *DataStore) DeleteWallet(ctx context.Context, walletID uuid.UUID) error {
-	currentWallet, err := d.GetWallet(ctx, walletID)
+func (d *DataStore) DeleteWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) error {
+	currentWallet, err := d.GetWallet(ctx, walletID, userID)
 	if err != nil {
 		if errors.Is(err, models.ErrWalletNotFound) {
 			return models.ErrWalletNotFound
@@ -242,10 +247,11 @@ func (d *DataStore) DeleteWallet(ctx context.Context, walletID uuid.UUID) error 
 	query := `UPDATE wallets
 				SET deleted_at = NOW(), active = false
 				WHERE wallet_id = $1 
+					AND user_id = $2
 					AND deleted_at IS NULL 
 					AND active = true`
 
-	_, err = d.pool.Exec(ctx, query, walletID)
+	_, err = d.pool.Exec(ctx, query, walletID, userID)
 	if err != nil {
 		return fmt.Errorf("error deleting wallet %s: %w", walletID.String(), err)
 	}
@@ -253,14 +259,14 @@ func (d *DataStore) DeleteWallet(ctx context.Context, walletID uuid.UUID) error 
 	return nil
 }
 
-func (d *DataStore) GetWallets(ctx context.Context, request models.GetWalletsRequest) ([]models.Wallet, error) {
+func (d *DataStore) GetWallets(ctx context.Context, request models.GetWalletsRequest, userID uuid.UUID) ([]models.Wallet, error) {
 	var (
 		walletsAll []models.Wallet
 		rows       pgx.Rows
 		err        error
 	)
 
-	query, args := d.GetWalletsQuery(request)
+	query, args := d.GetWalletsQuery(request, userID)
 
 	if rows, err = d.pool.Query(ctx, query, args...); err != nil {
 		return nil, fmt.Errorf("error getting all wallets info: %w", err)
@@ -273,6 +279,7 @@ func (d *DataStore) GetWallets(ctx context.Context, request models.GetWalletsReq
 
 		err = rows.Scan(
 			&wallet.WalletID,
+			&wallet.UserID,
 			&wallet.WalletName,
 			&wallet.Balance,
 			&wallet.Currency,
@@ -298,7 +305,7 @@ func (d *DataStore) GetWallets(ctx context.Context, request models.GetWalletsReq
 	return walletsAll, nil
 }
 
-func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest) (string, []any) {
+func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest, userID uuid.UUID) (string, []any) {
 	var (
 		sb              strings.Builder
 		args            []any
@@ -312,10 +319,13 @@ func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest) (string, [
 		}
 	)
 
-	sb.WriteString(`SELECT wallet_id, wallet_name, balance, currency, created_at, updated_at, active
+	sb.WriteString(`SELECT wallet_id, user_id, wallet_name, balance, currency, created_at, updated_at, active
 					FROM wallets
 					WHERE deleted_at IS NULL
 						AND active = true`)
+
+	args = append(args, userID)
+	sb.WriteString(fmt.Sprintf(` AND user_id = $%d`, len(args)))
 
 	if request.Filter != "" {
 		args = append(args, "%"+request.Filter+"%")
