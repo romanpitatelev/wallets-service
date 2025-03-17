@@ -6,11 +6,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/romanpitatelev/wallets-service/configs"
+	"github.com/romanpitatelev/wallets-service/internal/configs"
 	"github.com/romanpitatelev/wallets-service/internal/consumer"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
+	xrclient "github.com/romanpitatelev/wallets-service/internal/xr/xr-client"
 	"github.com/rs/zerolog/log"
 	migrate "github.com/rubenv/sql-migrate"
 	"golang.org/x/sync/errgroup"
@@ -45,14 +46,20 @@ func main() {
 		}
 	}()
 
-	log.Trace().Msg("kafka consumer created")
+	log.Info().Msg("kafka consumer created")
 
-	svc := service.New(pgStore, service.Config{
-		StaleWalletDuration: conf.GetStaleWalletDuration(),
-		PerformCheckPeriod:  conf.GetPerformCheckPeriod(),
-	})
+	client := xrclient.New(xrclient.Config{ServerAddress: conf.GetXRServerAddress()})
 
-	server := rest.New(rest.Config{Port: conf.GetAppPort()}, svc)
+	svc := service.New(
+		pgStore,
+		service.Config{
+			StaleWalletDuration: conf.GetStaleWalletDuration(),
+			PerformCheckPeriod:  conf.GetPerformCheckPeriod(),
+		},
+		client,
+	)
+
+	server := rest.New(rest.Config{Port: conf.GetAppPort()}, svc, rest.GetPublicKey())
 
 	errGr, ctx := errgroup.WithContext(ctx)
 

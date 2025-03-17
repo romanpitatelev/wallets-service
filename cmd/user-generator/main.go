@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
+	"github.com/google/uuid"
 	"github.com/goombaio/namegenerator"
 	"github.com/rs/zerolog/log"
 )
@@ -28,12 +29,12 @@ const (
 )
 
 type User struct {
-	UserID    int    `json:"userid"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Gender    string `json:"gender"`
-	Age       int    `json:"age"`
-	Deleted   bool   `json:"deleted"`
+	UserID    uuid.UUID `json:"userid"`
+	FirstName string    `json:"firstName"`
+	LastName  string    `json:"lastName"`
+	Gender    string    `json:"gender"`
+	Age       int       `json:"age"`
+	Deleted   bool      `json:"deleted"`
 }
 
 func main() {
@@ -96,18 +97,15 @@ func generateUser() User {
 		age = defaultAge
 	}
 
-	userID, err := rand.Int(rand.Reader, big.NewInt(int64(numberOfDifferentUsers)))
-	if err != nil {
-		log.Error().Err(err).Msg("error generating random user ID")
-	}
+	userID := uuid.New()
 
-	deleted, err := randonDeleted()
+	deleted, err := randomDeleted()
 	if err != nil {
 		log.Error().Err(err).Msg("error generating deleted value for user")
 	}
 
 	return User{
-		UserID:    int(userID.Int64()),
+		UserID:    userID,
 		FirstName: capitalizeFirstLetter(names[0]),
 		LastName:  capitalizeFirstLetter(names[1]),
 		Gender:    gender,
@@ -177,7 +175,7 @@ func sendUserToKafka(producer sarama.SyncProducer, topic string, user User) erro
 	return nil
 }
 
-func randonDeleted() (bool, error) {
+func randomDeleted() (bool, error) {
 	randNum, err := rand.Int(rand.Reader, big.NewInt(int64(deletedRandNum)))
 	if err != nil {
 		return false, fmt.Errorf("random number generation error when creating metric called deleted: %w", err)

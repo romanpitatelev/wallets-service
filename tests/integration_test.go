@@ -11,17 +11,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
+	xrclient "github.com/romanpitatelev/wallets-service/internal/xr/xr-client"
+	xrserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-server"
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stretchr/testify/suite"
 )
 
 const (
 	pgDSN      = "postgresql://postgres:my_pass@localhost:5432/wallets_db"
-	port       = 8081
+	port       = 5003
 	walletPath = `/api/v1/wallets`
+	xrPort     = 2607
+	xrAddress  = "http://localhost:2607"
 )
 
 type IntegrationTestSuite struct {
@@ -30,6 +36,8 @@ type IntegrationTestSuite struct {
 	db         *store.DataStore
 	service    *service.Service
 	server     *rest.Server
+	xrServer   *xrserver.Server
+	client     *xrclient.Client
 }
 
 func (s *IntegrationTestSuite) SetupSuite() {
@@ -44,12 +52,26 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	err = s.db.Migrate(migrate.Up)
 	s.Require().NoError(err)
 
-	s.service = service.New(s.db, service.Config{
-		StaleWalletDuration: 0,
-		PerformCheckPeriod:  0,
-	})
+	s.xrServer = xrserver.New(xrPort)
 
-	s.server = rest.New(rest.Config{Port: port}, s.service)
+	//nolint:testifylint
+	go func() {
+		err := s.xrServer.Run(ctx)
+		s.Require().NoError(err)
+	}()
+
+	s.client = xrclient.New(xrclient.Config{ServerAddress: xrAddress})
+
+	s.service = service.New(
+		s.db,
+		service.Config{
+			StaleWalletDuration: 0,
+			PerformCheckPeriod:  0,
+		},
+		s.client,
+	)
+
+	s.server = rest.New(rest.Config{Port: port}, s.service, rest.GetPublicKey())
 
 	//nolint:testifylint
 	go func() {
@@ -75,7 +97,7 @@ func TestIntegrationSetupSuite(t *testing.T) {
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
-func (s *IntegrationTestSuite) sendRequest(method, path string, status int, entity, result any) {
+func (s *IntegrationTestSuite) sendRequest(method, path string, status int, entity, result any, user models.User) {
 	body, err := json.Marshal(entity)
 	s.Require().NoError(err)
 
@@ -86,7 +108,8 @@ func (s *IntegrationTestSuite) sendRequest(method, path string, status int, enti
 		fmt.Sprintf("http://localhost:%d%s", port, path), bytes.NewReader(body))
 	s.Require().NoError(err, "fail to create request")
 
-	request.Header.Set("Content-Type", "application/json")
+	token := s.getToken(user)
+	request.Header.Set("Authorization", "Bearer "+token)
 
 	client := http.Client{}
 
@@ -119,4 +142,22 @@ func (s *IntegrationTestSuite) sendRequest(method, path string, status int, enti
 
 	err = json.NewDecoder(response.Body).Decode(result)
 	s.Require().NoError(err)
+}
+
+func (s *IntegrationTestSuite) getToken(user models.User) string {
+	claims := models.Claims{
+		UserID: user.UserID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	privateKey, err := readPrivateKey()
+	s.Require().NoError(err)
+
+	token, err := generateToken(&claims, privateKey)
+	s.Require().NoError(err)
+
+	return token
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -13,8 +14,8 @@ type IP struct {
 }
 
 type User struct {
-	UserID    int       `json:"userId"`
-	DeletedAt time.Time `json:"deletedAt"`
+	UserID    uuid.UUID  `json:"userId"`
+	DeletedAt *time.Time `json:"deletedAt"`
 }
 
 type Wallet struct {
@@ -30,8 +31,9 @@ type Wallet struct {
 }
 
 type WalletUpdate struct {
-	WalletName string `json:"walletName"`
-	Currency   string `json:"currency"`
+	WalletName string    `json:"walletName"`
+	UserID     uuid.UUID `json:"userId"`
+	Currency   string    `json:"currency"`
 }
 
 type GetWalletsRequest struct {
@@ -43,8 +45,35 @@ type GetWalletsRequest struct {
 }
 
 var (
+	ErrWalletEmptyName      = errors.New("wallet name cannot be empty")
 	ErrWalletNotFound       = errors.New("error wallet not found")
 	ErrWalletUpToDate       = errors.New("wallet is up-to-date")
 	ErrZeroValueWallet      = errors.New("zero-value wallet")
 	ErrNonZeroBalanceWallet = errors.New("wallet has non-zero balance")
+	ErrWrongCurrency        = errors.New("wrong currency")
+	ErrInvalidToken         = errors.New("invalid token")
+	ErrInvalidSigningMethod = errors.New("invalid signing method")
+	ErrWrongUserID          = errors.New("wrong userID")
 )
+
+type XRRequest struct {
+	FromCurrency string `json:"fromCurrency"`
+	ToCurrency   string `json:"toCurrency"`
+}
+
+type XRResponse struct {
+	Rate float64 `json:"rate"`
+}
+
+type Claims struct {
+	UserID uuid.UUID `json:"userId"`
+	Email  string    `json:"email"`
+	Role   string    `json:"role"`
+	jwt.RegisteredClaims
+}
+
+type UserInfo struct {
+	UserID uuid.UUID `json:"userId"`
+	Email  string    `json:"email"`
+	Role   string    `json:"role"`
+}

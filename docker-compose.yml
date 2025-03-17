@@ -10,10 +10,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: my_pass
       POSTGRES_DB: wallets_db
-      PGDATA: /var/lib/postresql/data/pgdata
-
 
   kafka:
+    container_name: kafka_wallets
     image: docker.io/bitnami/kafka:3.7
     ports: 
       - "9094:9094"
@@ -30,6 +29,24 @@ services:
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+
+  user-generator:
+    container_name: user_generator
+    build:
+      context: .
+      dockerfile: deployment/user-generator/Dockerfile
+    depends_on:
+      - kafka
+    environment:
+      - KAFKA_PRODUCER=kafka:9092
+    restart: on-failure
+  
+  xr-service:
+    container_name: xr_service
+    build:
+      context: .
+      dockerfile: deployment/xr-service/Dockerfile
+    restart: on-failure
 
 volumes:
   postgres-data:
