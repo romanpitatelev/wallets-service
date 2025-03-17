@@ -17,11 +17,27 @@ jobs:
   
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        env:
+          POSTGRES_DB: wallets_db
+          POSTGRES_USER: ${{secrets.DB_USERNAME}}
+          POSTGRES_PASSWORD: ${{secrets.DB_PASSWORD}}
+    env:
+      DATABASE_URL: postgresql://${{secrets.DB_USERNAME}}:${{secrets.DB_PASSWORD}}@localhost:5432/wallets_db
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24.1'
+      - uses: actions/checkout@v4
+      - run: until pg_isready -h localhost -p 5432; do echo "Waiting for postgres ..."; sleep 1; done
       - run: go test -race ./...
 
   build:
