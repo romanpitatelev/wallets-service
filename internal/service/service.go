@@ -80,6 +80,14 @@ func (s *Service) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoW
 		return models.Wallet{}, fmt.Errorf("wallet not found: %w", err)
 	}
 
+	if newInfoWallet.WalletName == "" {
+		newInfoWallet.WalletName = dbWallet.WalletName
+	}
+
+	if newInfoWallet.Currency == "" {
+		newInfoWallet.Currency = dbWallet.Currency
+	}
+
 	rate := defaultRate
 
 	if dbWallet.Currency != strings.ToUpper(newInfoWallet.Currency) {

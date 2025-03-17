@@ -2,6 +2,8 @@ package rest
 
 import (
 	"context"
+	"crypto/rsa"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,7 +11,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	jwtclaims "github.com/romanpitatelev/wallets-service/internal/jwt-claims"
 	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/rs/zerolog/log"
 )
@@ -17,7 +18,11 @@ import (
 const (
 	tokenLength    = 3
 	authFailedText = "authorization failed"
+	tokenDuration  = 24 * time.Hour
 )
+
+//go:embed keys/public_key.pem
+var publicKeyData []byte
 
 //nolintlint:funlen
 func (s *Server) jwtAuth(next http.Handler) http.Handler {
@@ -44,7 +49,7 @@ func (s *Server) jwtAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		token, err := jwt.ParseWithClaims(headerParts[1], &jwtclaims.Claims{}, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(headerParts[1], &models.Claims{}, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 				return nil, models.ErrInvalidSigningMethod
 			}
@@ -57,7 +62,7 @@ func (s *Server) jwtAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		claims, ok := token.Claims.(*jwtclaims.Claims)
+		claims, ok := token.Claims.(*models.Claims)
 		if !(ok && token.Valid) {
 			s.errorUnauthorizedResponse(w, models.ErrInvalidToken)
 
@@ -101,4 +106,33 @@ func (s *Server) errorUnauthorizedResponse(w http.ResponseWriter, err error) {
 	if _, err = w.Write(response); err != nil {
 		log.Warn().Err(err).Msg("error writing response")
 	}
+}
+
+func NewClaims() *models.Claims {
+	tokenTime := time.Now().Add(tokenDuration)
+
+	return &models.Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(tokenTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+}
+
+func ReadPublicKey() (*rsa.PublicKey, error) {
+	publicKey, err := jwt.ParseRSAPublicKeyFromPEM(publicKeyData)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing public key: %w", err)
+	}
+
+	return publicKey, nil
+}
+
+func GetPublicKey() *rsa.PublicKey {
+	key, err := ReadPublicKey()
+	if err != nil {
+		return nil
+	}
+
+	return key
 }

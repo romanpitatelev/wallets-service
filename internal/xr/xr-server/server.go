@@ -33,7 +33,7 @@ func New(port int) *Server {
 	}
 
 	router.Route("/api/v1", func(r chi.Router) {
-		r.Get("/xr", s.GetExchangeRate)
+		r.Get("/xr", s.getExchangeRate)
 	})
 
 	return s
@@ -56,7 +56,7 @@ func (s *Server) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *Server) GetExchangeRate(w http.ResponseWriter, r *http.Request) {
+func (s *Server) getExchangeRate(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 
 	xr := models.XRRequest{

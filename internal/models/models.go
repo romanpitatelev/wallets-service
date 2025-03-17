@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -62,6 +63,13 @@ type XRRequest struct {
 
 type XRResponse struct {
 	Rate float64 `json:"rate"`
+}
+
+type Claims struct {
+	UserID uuid.UUID `json:"userId"`
+	Email  string    `json:"email"`
+	Role   string    `json:"role"`
+	jwt.RegisteredClaims
 }
 
 type UserInfo struct {

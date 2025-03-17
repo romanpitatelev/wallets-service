@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	jwtclaims "github.com/romanpitatelev/wallets-service/internal/jwt-claims"
 	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
@@ -39,7 +38,6 @@ type IntegrationTestSuite struct {
 	server     *rest.Server
 	xrServer   *xrserver.Server
 	client     *xrclient.Client
-	jwtClaims  *jwtclaims.Claims
 }
 
 func (s *IntegrationTestSuite) SetupSuite() {
@@ -73,9 +71,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 		s.client,
 	)
 
-	s.jwtClaims = jwtclaims.New()
-
-	s.server = rest.New(rest.Config{Port: port}, s.service, s.jwtClaims.GetPublicKey())
+	s.server = rest.New(rest.Config{Port: port}, s.service, rest.GetPublicKey())
 
 	//nolint:testifylint
 	go func() {
@@ -149,7 +145,7 @@ func (s *IntegrationTestSuite) sendRequest(method, path string, status int, enti
 }
 
 func (s *IntegrationTestSuite) getToken(user models.User) string {
-	claims := jwtclaims.Claims{
+	claims := models.Claims{
 		UserID: user.UserID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
@@ -157,10 +153,10 @@ func (s *IntegrationTestSuite) getToken(user models.User) string {
 		},
 	}
 
-	privateKey, err := jwtclaims.ReadPrivateKey()
+	privateKey, err := readPrivateKey()
 	s.Require().NoError(err)
 
-	token, err := claims.GenerateToken(privateKey)
+	token, err := generateToken(&claims, privateKey)
 	s.Require().NoError(err)
 
 	return token

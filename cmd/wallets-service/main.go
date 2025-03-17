@@ -6,9 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/romanpitatelev/wallets-service/configs"
+	"github.com/romanpitatelev/wallets-service/internal/configs"
 	"github.com/romanpitatelev/wallets-service/internal/consumer"
-	jwtclaims "github.com/romanpitatelev/wallets-service/internal/jwt-claims"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
@@ -60,9 +59,7 @@ func main() {
 		client,
 	)
 
-	jwtClaims := jwtclaims.New()
-
-	server := rest.New(rest.Config{Port: conf.GetAppPort()}, svc, jwtClaims.GetPublicKey())
+	server := rest.New(rest.Config{Port: conf.GetAppPort()}, svc, rest.GetPublicKey())
 
 	errGr, ctx := errgroup.WithContext(ctx)
 

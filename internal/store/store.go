@@ -67,7 +67,7 @@ func (d *DataStore) Migrate(direction migrate.MigrationDirection) error {
 	}
 
 	for _, file := range files {
-		log.Debug().Str("file", file.Name()).Msg("found migration file")
+		log.Info().Str("file", file.Name()).Msg("found migration file")
 	}
 
 	assetDir := func() func(string) ([]string, error) {
@@ -139,8 +139,6 @@ func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet, user
 		&createdWallet.Active,
 	)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to insert wallet into database")
-
 		return models.Wallet{}, fmt.Errorf("failed to create wallet: %w", err)
 	}
 
@@ -177,19 +175,6 @@ func (d *DataStore) GetWallet(ctx context.Context, walletID uuid.UUID, userID uu
 
 //nolint:lll
 func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoWallet models.WalletUpdate, rate float64, userID uuid.UUID) (models.Wallet, error) {
-	currentWallet, err := d.GetWallet(ctx, walletID, userID)
-	if err != nil {
-		return models.Wallet{}, fmt.Errorf("failed to fetch current wallet: %w", err)
-	}
-
-	if newInfoWallet.WalletName == "" {
-		newInfoWallet.WalletName = currentWallet.WalletName
-	}
-
-	if newInfoWallet.Currency == "" {
-		newInfoWallet.Currency = currentWallet.Currency
-	}
-
 	query := `UPDATE wallets
 		SET wallet_name = $1, currency = $2, balance = $3 * balance, updated_at = $4
 		WHERE wallet_id = $5 AND user_id = $6 AND deleted_at IS NULL
@@ -208,7 +193,7 @@ func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInf
 
 	var wallet models.Wallet
 
-	err = row.Scan(
+	err := row.Scan(
 		&wallet.WalletID,
 		&wallet.UserID,
 		&wallet.WalletName,
@@ -368,8 +353,9 @@ func (d *DataStore) Truncate(ctx context.Context, tables ...string) error {
 func (d *DataStore) ArchiveStaleWallets(ctx context.Context, checkPeriod time.Duration) error {
 	query := fmt.Sprintf(`UPDATE wallets
 				SET active = false
-				WHERE balance = 0 
-				AND updated_at < NOW() - INTERVAL '%d hours'`, int(checkPeriod.Hours()))
+				WHERE balance = 0
+					AND active = true 
+					AND updated_at < NOW() - INTERVAL '%d hours'`, int(checkPeriod.Hours()))
 
 	_, err := d.pool.Exec(ctx, query)
 	if err != nil {
