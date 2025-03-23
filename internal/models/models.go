@@ -45,15 +45,20 @@ type GetWalletsRequest struct {
 }
 
 var (
-	ErrWalletEmptyName      = errors.New("wallet name cannot be empty")
-	ErrWalletNotFound       = errors.New("error wallet not found")
-	ErrWalletUpToDate       = errors.New("wallet is up-to-date")
-	ErrZeroValueWallet      = errors.New("zero-value wallet")
-	ErrNonZeroBalanceWallet = errors.New("wallet has non-zero balance")
-	ErrWrongCurrency        = errors.New("wrong currency")
-	ErrInvalidToken         = errors.New("invalid token")
-	ErrInvalidSigningMethod = errors.New("invalid signing method")
-	ErrWrongUserID          = errors.New("wrong userID")
+	ErrWalletEmptyName        = errors.New("wallet name cannot be empty")
+	ErrWalletNotFound         = errors.New("error wallet not found")
+	ErrWalletUpToDate         = errors.New("wallet is up-to-date")
+	ErrZeroValueWallet        = errors.New("zero-value wallet")
+	ErrNonZeroBalanceWallet   = errors.New("wallet has non-zero balance")
+	ErrWrongCurrency          = errors.New("wrong currency")
+	ErrInvalidToken           = errors.New("invalid token")
+	ErrInvalidSigningMethod   = errors.New("invalid signing method")
+	ErrWrongUserID            = errors.New("wrong userID")
+	ErrZeroAmount             = errors.New("invalid zero-amount transaction")
+	ErrNegativeAmount         = errors.New("negative amount transaction")
+	ErrSameWallet             = errors.New("same wallet transaction")
+	ErrInsufficientFunds      = errors.New("wallet has insufficient funds")
+	ErrProducerNotInitialized = errors.New("producer is not initialized")
 )
 
 type XRRequest struct {
@@ -76,4 +81,14 @@ type UserInfo struct {
 	UserID uuid.UUID `json:"userId"`
 	Email  string    `json:"email"`
 	Role   string    `json:"role"`
+}
+
+type Transaction struct {
+	ID           uuid.UUID `json:"transactionId"`
+	Type         string    `json:"type"`
+	ToWalletID   uuid.UUID `json:"toWalletId"`
+	FromWalletID uuid.UUID `json:"fromWalletId"`
+	Amount       float64   `json:"amount"`
+	Currency     string    `json:"currency"`
+	CommittedAt  time.Time `json:"committedAt"`
 }

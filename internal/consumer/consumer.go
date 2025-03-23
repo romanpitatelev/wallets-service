@@ -14,13 +14,13 @@ const (
 	topic = "users"
 )
 
-type Config struct {
-	Port string
-}
-
 type Consumer struct {
 	consumer sarama.Consumer
 	store    userStore
+}
+
+type Config struct {
+	Port string
 }
 
 type userStore interface {

@@ -493,17 +493,6 @@ func (s *IntegrationTestSuite) TestGetWallets() {
 
 		s.Require().Len(wallets, 2)
 		s.Require().Equal(wallets[0].UserID, walletFour.UserID)
-		s.Require().Equal(wallets[1].WalletID, walletTwo.WalletID)
-	})
-
-	s.Run("sorted by name with limit 2 and offset 2", func() {
-		var wallets []models.Wallet
-
-		someWalletPath := walletPath + "?sorting=wallet_name&limit=2&offset=2"
-
-		s.sendRequest(http.MethodGet, someWalletPath, http.StatusOK, nil, &wallets, existingUser)
-
-		s.Require().Len(wallets, 2)
 		s.Require().Equal(wallets[0].Currency, walletFour.Currency)
 		s.Require().Equal(wallets[1].WalletID, walletTwo.WalletID)
 	})

@@ -13,6 +13,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/producer"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
@@ -28,6 +29,7 @@ const (
 	walletPath = `/api/v1/wallets`
 	xrPort     = 2607
 	xrAddress  = "http://localhost:2607"
+	kafkaPort  = "localhost:9094"
 )
 
 type IntegrationTestSuite struct {
@@ -38,6 +40,7 @@ type IntegrationTestSuite struct {
 	server     *rest.Server
 	xrServer   *xrserver.Server
 	client     *xrclient.Client
+	txProducer *producer.Producer
 }
 
 func (s *IntegrationTestSuite) SetupSuite() {
@@ -51,6 +54,8 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 	err = s.db.Migrate(migrate.Up)
 	s.Require().NoError(err)
+
+	s.txProducer, err = producer.New(producer.Config{Port: kafkaPort})
 
 	s.xrServer = xrserver.New(xrPort)
 
@@ -69,6 +74,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 			PerformCheckPeriod:  0,
 		},
 		s.client,
+		s.txProducer,
 	)
 
 	s.server = rest.New(rest.Config{Port: port}, s.service, rest.GetPublicKey())

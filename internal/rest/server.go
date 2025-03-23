@@ -10,8 +10,6 @@ import (
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
-	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/rs/zerolog/log"
 )
 
@@ -26,14 +24,6 @@ type Server struct {
 	service service
 	port    int
 	key     *rsa.PublicKey
-}
-
-type service interface {
-	CreateWallet(ctx context.Context, wallet models.Wallet, userID uuid.UUID) (models.Wallet, error)
-	GetWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) (models.Wallet, error)
-	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate, userID uuid.UUID) (models.Wallet, error)
-	DeleteWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) error
-	GetAllWallets(ctx context.Context, request models.GetWalletsRequest, userID uuid.UUID) ([]models.Wallet, error)
 }
 
 func New(conf Config, service service, key *rsa.PublicKey) *Server {
@@ -53,11 +43,16 @@ func New(conf Config, service service, key *rsa.PublicKey) *Server {
 		r.Use(middleware.Recoverer)
 		r.Use(s.jwtAuth)
 
-		r.Post("/wallets", s.CreateWallet)
-		r.Get("/wallets/{walletId}", s.GetWallet)
-		r.Patch("/wallets/{walletId}", s.UpdateWallet)
-		r.Delete("/wallets/{walletId}", s.DeleteWallet)
-		r.Get("/wallets", s.GetWallets)
+		r.Post("/wallets", s.createWallet)
+		r.Get("/wallets/{walletId}", s.getWallet)
+		r.Patch("/wallets/{walletId}", s.updateWallet)
+		r.Delete("/wallets/{walletId}", s.deleteWallet)
+		r.Get("/wallets", s.getWallets)
+
+		r.Put("/wallets/{walletId}/deposit", s.deposit)
+		r.Put("/wallets/{walletId}/withdrawal", s.withdrawFunds)
+		r.Put("/wallets/{walletId}/transfer", s.transfer)
+		r.Get("/wallets/{walletId}/transactions", s.getTransactions)
 	})
 
 	return s

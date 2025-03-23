@@ -8,6 +8,7 @@ import (
 
 	"github.com/romanpitatelev/wallets-service/internal/configs"
 	"github.com/romanpitatelev/wallets-service/internal/consumer"
+	"github.com/romanpitatelev/wallets-service/internal/producer"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
@@ -48,6 +49,19 @@ func main() {
 
 	log.Info().Msg("kafka consumer created")
 
+	kafkaTxProducer, err := producer.New(producer.Config{Port: conf.GetKafkaPort()})
+	if err != nil {
+		log.Panic().Err(err).Msg("failed to create kafka transactions producer")
+	}
+
+	log.Info().Msg("kafka producer created")
+
+	defer func() {
+		if err = kafkaTxProducer.Close(); err != nil {
+			log.Warn().Err(err).Msg("failed to close kafka transactions producer")
+		}
+	}()
+
 	client := xrclient.New(xrclient.Config{ServerAddress: conf.GetXRServerAddress()})
 
 	svc := service.New(
@@ -57,6 +71,7 @@ func main() {
 			PerformCheckPeriod:  conf.GetPerformCheckPeriod(),
 		},
 		client,
+		kafkaTxProducer,
 	)
 
 	server := rest.New(rest.Config{Port: conf.GetAppPort()}, svc, rest.GetPublicKey())
