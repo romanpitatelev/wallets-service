@@ -24,12 +24,12 @@ import (
 )
 
 const (
-	pgDSN      = "postgresql://postgres:my_pass@localhost:5432/wallets_db"
-	port       = 5003
-	walletPath = `/api/v1/wallets`
-	xrPort     = 2607
-	xrAddress  = "http://localhost:2607"
-	kafkaPort  = "localhost:9094"
+	pgDSN        = "postgresql://postgres:my_pass@localhost:5432/wallets_db"
+	port         = 5003
+	walletPath   = `/api/v1/wallets`
+	xrPort       = 2607
+	xrAddress    = "http://localhost:2607"
+	kafkaAddress = "localhost:9094"
 )
 
 type IntegrationTestSuite struct {
@@ -55,7 +55,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	err = s.db.Migrate(migrate.Up)
 	s.Require().NoError(err)
 
-	s.txProducer, err = producer.New(producer.Config{Port: kafkaPort})
+	s.txProducer, err = producer.New(producer.Config{Addr: kafkaAddress})
 
 	s.xrServer = xrserver.New(xrPort)
 

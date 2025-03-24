@@ -36,7 +36,7 @@ func main() {
 
 	log.Info().Msg("successful migration")
 
-	kafkaConsumer, err := consumer.New(pgStore, consumer.Config{Port: conf.GetKafkaPort()})
+	kafkaConsumer, err := consumer.New(pgStore, consumer.Config{Addr: conf.GetKafkaAddress()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to create kafka consumer")
 	}
@@ -49,7 +49,7 @@ func main() {
 
 	log.Info().Msg("kafka consumer created")
 
-	kafkaTxProducer, err := producer.New(producer.Config{Port: conf.GetKafkaPort()})
+	kafkaTxProducer, err := producer.New(producer.Config{Addr: conf.GetKafkaAddress()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to create kafka transactions producer")
 	}

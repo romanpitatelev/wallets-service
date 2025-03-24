@@ -11,7 +11,7 @@ import (
 const transactiontTopic = "transaction_update"
 
 type Config struct {
-	Port string
+	Addr string
 }
 
 type Producer struct {
@@ -22,7 +22,7 @@ func New(conf Config) (*Producer, error) {
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
 
-	producer, err := sarama.NewSyncProducer([]string{conf.Port}, config)
+	producer, err := sarama.NewSyncProducer([]string{conf.Addr}, config)
 	if err != nil {
 		return nil, fmt.Errorf("error creating producer: %w", err)
 	}

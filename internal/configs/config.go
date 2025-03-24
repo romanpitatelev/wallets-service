@@ -20,7 +20,7 @@ type Config struct {
 
 type EnvSetting struct {
 	AppPort             int           `env:"APP_PORT" env-default:"8081" env-description:"Application port"`
-	KafkaPort           string        `env:"KAFKA_PORT" env-default:"localhost:9094" env-description:"Kafka port"`
+	KafkaAddress        string        `env:"KAFKA_ADDRESS" env-default:"localhost:9094" env-description:"Kafka port"`
 	PostgresDSN         string        `env:"POSTGRES_PORT" env-default:"postgresql://postgres:my_pass@localhost:5432/wallets_db" env-description:"PostgreSQL DSN"` //nolint:lll
 	StaleWalletDuration time.Duration `env:"STALE_WALLET_DURATION" env-default:"24h" env-description:"The wallet is considered stale after this time duration"`
 	PerformCheckPeriod  time.Duration `env:"PERFORM_CHECK_PERIOD" env-default:"1h" env-description:"Frequency of stale wallet checks"`
@@ -89,8 +89,8 @@ func (c *Config) GetAppPort() int {
 	return c.env.AppPort
 }
 
-func (c *Config) GetKafkaPort() string {
-	return c.env.KafkaPort
+func (c *Config) GetKafkaAddress() string {
+	return c.env.KafkaAddress
 }
 
 func (c *Config) GetPostgresDSN() string {

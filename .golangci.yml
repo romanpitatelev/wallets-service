@@ -15,8 +15,6 @@ linters-settings:
     line-length: 160
 
 linters:
-  enable-all: true
-
   disable:
     - depguard
     - exhaustruct
@@ -24,7 +22,7 @@ linters:
     - tagalign
     - tenv
     - varnamelen
-  
+
 run:
   timeout: 5m
   tests: true
@@ -36,5 +34,5 @@ output:
 issues:
   exclude-rules:
     - path: tests/.*
-      linters: 
+      linters:
         - funlen
