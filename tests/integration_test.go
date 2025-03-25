@@ -19,6 +19,7 @@ import (
 	"github.com/romanpitatelev/wallets-service/internal/store"
 	xrclient "github.com/romanpitatelev/wallets-service/internal/xr/xr-client"
 	xrserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-server"
+	"github.com/rs/zerolog/log"
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stretchr/testify/suite"
 )
@@ -44,6 +45,8 @@ type IntegrationTestSuite struct {
 }
 
 func (s *IntegrationTestSuite) SetupSuite() {
+	log.Debug().Msg("starting SetupSuite ...")
+
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancelFunc = cancel
 
@@ -52,12 +55,23 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	s.db, err = store.New(ctx, store.Config{Dsn: pgDSN})
 	s.Require().NoError(err)
 
+	log.Debug().Msg("starting new db ...")
+
 	err = s.db.Migrate(migrate.Up)
 	s.Require().NoError(err)
 
+	log.Debug().Msg("migrations are ready")
+
+	log.Debug().Msg("starting new producer ...")
+
+	time.Sleep(5 * time.Second)
+
 	s.txProducer, err = producer.New(producer.Config{Addr: kafkaAddress})
+	s.Require().NoError(err)
 
 	s.xrServer = xrserver.New(xrPort)
+
+	log.Debug().Msg("xr server is compiled")
 
 	//nolint:testifylint
 	go func() {
@@ -66,6 +80,8 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	}()
 
 	s.client = xrclient.New(xrclient.Config{ServerAddress: xrAddress})
+
+	log.Debug().Msg("xr client is ready")
 
 	s.service = service.New(
 		s.db,
@@ -85,7 +101,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 		s.Require().NoError(err)
 	}()
 
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(20 * time.Second)
 }
 
 func (s *IntegrationTestSuite) TearDownSuite() {

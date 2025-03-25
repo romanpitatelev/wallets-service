@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE coverage SYSTEM "http://cobertura.sourceforge.net/xml/coverage-04.dtd">
-<coverage line-rate="0.53269345" branch-rate="0" version="" timestamp="1742932100731" lines-covered="888" lines-valid="1667" branches-covered="0" branches-valid="0" complexity="0">
+<coverage line-rate="0.53269345" branch-rate="0" version="" timestamp="1742936187869" lines-covered="888" lines-valid="1667" branches-covered="0" branches-valid="0" complexity="0">
   <sources>
     <source>/home/roman/go/src/github.com/romanpitatelev/wallets-service</source>
   </sources>
