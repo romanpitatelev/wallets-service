@@ -39,10 +39,6 @@ func (p *Producer) Close() error {
 }
 
 func (p *Producer) SendTxToKafka(transaction models.Transaction) error {
-	if p == nil || p.producer == nil {
-		return models.ErrProducerNotInitialized
-	}
-
 	bytes, err := json.Marshal(transaction)
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON when sending tx to kafka: %w", err)

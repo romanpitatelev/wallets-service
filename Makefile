@@ -22,7 +22,7 @@ down:
 tidy:
 	go mod tidy
 
-lint: 
+lint: tidy
 	gofumpt -w .
 	gci write . --skip-generated -s standard -s default
 	golangci-lint run ./...

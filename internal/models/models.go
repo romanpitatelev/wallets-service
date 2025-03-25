@@ -45,20 +45,19 @@ type GetWalletsRequest struct {
 }
 
 var (
-	ErrWalletEmptyName        = errors.New("wallet name cannot be empty")
-	ErrWalletNotFound         = errors.New("error wallet not found")
-	ErrWalletUpToDate         = errors.New("wallet is up-to-date")
-	ErrZeroValueWallet        = errors.New("zero-value wallet")
-	ErrNonZeroBalanceWallet   = errors.New("wallet has non-zero balance")
-	ErrWrongCurrency          = errors.New("wrong currency")
-	ErrInvalidToken           = errors.New("invalid token")
-	ErrInvalidSigningMethod   = errors.New("invalid signing method")
-	ErrWrongUserID            = errors.New("wrong userID")
-	ErrZeroAmount             = errors.New("invalid zero-amount transaction")
-	ErrNegativeAmount         = errors.New("negative amount transaction")
-	ErrSameWallet             = errors.New("same wallet transaction")
-	ErrInsufficientFunds      = errors.New("wallet has insufficient funds")
-	ErrProducerNotInitialized = errors.New("producer is not initialized")
+	ErrWalletEmptyName      = errors.New("wallet name cannot be empty")
+	ErrWalletNotFound       = errors.New("error wallet not found")
+	ErrWalletUpToDate       = errors.New("wallet is up-to-date")
+	ErrZeroValueWallet      = errors.New("zero-value wallet")
+	ErrNonZeroBalanceWallet = errors.New("wallet has non-zero balance")
+	ErrWrongCurrency        = errors.New("wrong currency")
+	ErrInvalidToken         = errors.New("invalid token")
+	ErrInvalidSigningMethod = errors.New("invalid signing method")
+	ErrWrongUserID          = errors.New("wrong userID")
+	ErrZeroAmount           = errors.New("invalid zero-amount transaction")
+	ErrNegativeAmount       = errors.New("negative amount transaction")
+	ErrSameWallet           = errors.New("same wallet transaction")
+	ErrInsufficientFunds    = errors.New("wallet has insufficient funds")
 )
 
 type XRRequest struct {

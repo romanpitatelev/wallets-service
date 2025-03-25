@@ -63,7 +63,7 @@ func (s *Server) jwtAuth(next http.Handler) http.Handler {
 		}
 
 		claims, ok := token.Claims.(*models.Claims)
-		if !(ok && token.Valid) {
+		if !ok || !token.Valid {
 			s.errorUnauthorizedResponse(w, models.ErrInvalidToken)
 
 			return
