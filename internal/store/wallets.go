@@ -2,8 +2,6 @@ package store
 
 import (
 	"context"
-	"database/sql"
-	"embed"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,108 +9,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // functions from this package are not used
 	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/rs/zerolog/log"
-	migrate "github.com/rubenv/sql-migrate"
 )
-
-//go:embed migrations
-var migrations embed.FS
-
-type DataStore struct {
-	pool *pgxpool.Pool
-	dsn  string
-}
-
-type Config struct {
-	Dsn string
-}
-
-func New(ctx context.Context, conf Config) (*DataStore, error) {
-	pool, err := pgxpool.New(ctx, conf.Dsn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
-	}
-
-	if err := pool.Ping(ctx); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	log.Info().Msg("connected to database")
-
-	return &DataStore{
-		pool: pool,
-		dsn:  conf.Dsn,
-	}, nil
-}
-
-func (d *DataStore) Migrate(direction migrate.MigrationDirection) error {
-	conn, err := sql.Open("pgx", d.dsn)
-	if err != nil {
-		return fmt.Errorf("failed to open sql: %w", err)
-	}
-
-	defer func() {
-		err := conn.Close()
-		if err != nil {
-			log.Error().Msg("failed to close database")
-		}
-	}()
-
-	files, err := migrations.ReadDir("migrations")
-	if err != nil {
-		return fmt.Errorf("failed to read migrations directory: %w", err)
-	}
-
-	for _, file := range files {
-		log.Info().Str("file", file.Name()).Msg("found migration file")
-	}
-
-	assetDir := func() func(string) ([]string, error) {
-		return func(path string) ([]string, error) {
-			dirEntry, err := migrations.ReadDir(path)
-			if err != nil {
-				return nil, fmt.Errorf("migrations reading failed: %w", err)
-			}
-
-			entries := make([]string, 0)
-			for _, e := range dirEntry {
-				entries = append(entries, e.Name())
-			}
-
-			return entries, nil
-		}
-	}()
-
-	asset := migrate.AssetMigrationSource{
-		Asset:    migrations.ReadFile,
-		AssetDir: assetDir,
-		Dir:      "migrations",
-	}
-
-	_, err = migrate.Exec(conn, "postgres", asset, direction)
-	if err != nil {
-		return fmt.Errorf("failed to count the number of migrations: %w", err)
-	}
-
-	return nil
-}
-
-func (d *DataStore) UpsertUser(ctx context.Context, users models.User) error {
-	query := `INSERT INTO users (user_id, deleted_at)
-		VALUES ($1, $2)
-		ON CONFLICT (user_id) 
-		DO UPDATE SET deleted_at = excluded.deleted_at`
-
-	_, err := d.pool.Exec(ctx, query, users.UserID, users.DeletedAt)
-	if err != nil {
-		return fmt.Errorf("failed to upsert users: %w", err)
-	}
-
-	return nil
-}
 
 func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet, userID uuid.UUID) (models.Wallet, error) {
 	query := `INSERT INTO wallets (wallet_id, user_id, wallet_name, currency)
@@ -145,12 +45,27 @@ func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet, user
 	return createdWallet, nil
 }
 
+type querier interface {
+	QueryRow(ctx context.Context, query string, args ...any) pgx.Row
+}
+
+//nolint:ineffassign,wastedassign
 func (d *DataStore) GetWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) (models.Wallet, error) {
 	var wallet models.Wallet
 
 	query := `SELECT wallet_id, user_id, wallet_name, balance, currency, created_at, updated_at, active
 				FROM wallets
 				WHERE wallet_id = $1 AND user_id = $2 AND deleted_at IS NULL`
+
+	var db querier
+
+	db = d.getTXFromCtx(ctx)
+
+	if db == nil {
+		db = d.pool
+	} else {
+		query += ` FOR UPDATE`
+	}
 
 	err := d.pool.QueryRow(ctx, query, walletID, userID).Scan(
 		&wallet.WalletID,
@@ -295,12 +210,8 @@ func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest, userID uui
 		sb              strings.Builder
 		args            []any
 		validSortParams = map[string]string{
-			"wallet_id":   "wallet_id",
 			"wallet_name": "wallet_name",
 			"currency":    "currency",
-			"balance":     "balance",
-			"created_at":  "created_at",
-			"updated_at":  "updated_at",
 		}
 	)
 
@@ -319,7 +230,7 @@ func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest, userID uui
 
 	sorting, ok := validSortParams[request.Sorting]
 	if !ok {
-		sorting = "wallet_id"
+		sorting = "currency"
 	}
 
 	sb.WriteString(" ORDER BY " + sorting)
@@ -340,34 +251,26 @@ func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest, userID uui
 	return sb.String(), args
 }
 
-func (d *DataStore) Truncate(ctx context.Context, tables ...string) error {
-	for _, table := range tables {
-		if _, err := d.pool.Exec(ctx, `DELETE FROM `+table); err != nil {
-			return fmt.Errorf("error truncating wallet %s: %w", table, err)
-		}
-	}
-
-	return nil
-}
-
-func (d *DataStore) ArchiveStaleWallets(ctx context.Context, checkPeriod time.Duration) error {
-	query := fmt.Sprintf(`UPDATE wallets
-				SET active = false
-				WHERE balance = 0
-					AND active = true 
-					AND updated_at < NOW() - INTERVAL '%d hours'`, int(checkPeriod.Hours()))
-
-	_, err := d.pool.Exec(ctx, query)
+func (d *DataStore) DoWithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	tx, err := d.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("error archiving wallet: %w", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
-	return nil
-}
+	ctx = d.storeTx(ctx, tx)
 
-func (d *DataStore) Exec(ctx context.Context, query string, args ...any) error {
-	if _, err := d.pool.Exec(ctx, query, args...); err != nil {
-		return fmt.Errorf("error executing query %s: %w", query, err)
+	defer func() {
+		if err = tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			log.Warn().Err(err).Msg("failed to rollback transaction")
+		}
+	}()
+
+	if err := fn(ctx); err != nil {
+		return fmt.Errorf("error in fn(ctx): %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil

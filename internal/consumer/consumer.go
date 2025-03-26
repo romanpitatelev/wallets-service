@@ -14,13 +14,13 @@ const (
 	topic = "users"
 )
 
-type Config struct {
-	Port string
-}
-
 type Consumer struct {
 	consumer sarama.Consumer
 	store    userStore
+}
+
+type Config struct {
+	Addr string
 }
 
 type userStore interface {
@@ -28,7 +28,7 @@ type userStore interface {
 }
 
 func New(store userStore, conf Config) (*Consumer, error) {
-	consumer, err := sarama.NewConsumer([]string{conf.Port}, nil)
+	consumer, err := sarama.NewConsumer([]string{conf.Addr}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kafka consumer in sarama.NewConsumer(): %w", err)
 	}

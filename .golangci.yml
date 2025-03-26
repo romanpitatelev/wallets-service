@@ -1,40 +1,48 @@
-linters-settings:
-  gocyclo:
-    min-complexity: 24
-  cyclop:
-    max-complexity: 24
-  forbidigo:
-    forbid:
-      - .*\.fatal,*
-      - fmt.Print.*
-  gci:
-    skip-generated: true
-  gofmt:
-    simplify: true
-  lll:
-    line-length: 160
+version : "2"
 
 linters:
-  enable-all: true
-
+  default: all
   disable:
     - depguard
     - exhaustruct
     - ireturn
+    - revive
     - tagalign
-    - tenv
     - varnamelen
-  
+  settings: 
+    gocyclo:
+      min-complexity: 24
+    cyclop:
+      max-complexity: 24
+    forbidigo:
+      forbid:
+        - pattern: '^.*\.fatal.*$'
+        - pattern: '^fmt\.Print.*$'
+    lll:
+      line-length: 160
+    whitespace:
+      multi-if: false
+      multi-func: true
+  exclusions:
+    rules:
+      - path: tests/.*
+        linters:
+          - funlen
+
+
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+
 run:
   timeout: 5m
   tests: true
+  allow-parallel-runners: true
 
 output:
   formats:
-    - format: colored-line-number
-
-issues:
-  exclude-rules:
-    - path: tests/.*
-      linters: 
-        - funlen
+    text:
+      path: stdout
+      colors: true
