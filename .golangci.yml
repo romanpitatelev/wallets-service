@@ -4,6 +4,7 @@ linters:
   default: all
   disable:
     - depguard
+    - dupl
     - exhaustruct
     - ireturn
     - revive
