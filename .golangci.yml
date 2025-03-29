@@ -4,11 +4,13 @@ linters:
   default: all
   disable:
     - depguard
-    - dupl
     - exhaustruct
     - ireturn
+    - paralleltest
     - revive
     - tagalign
+    - testpackage
+    - tparallel
     - varnamelen
   settings: 
     gocyclo:

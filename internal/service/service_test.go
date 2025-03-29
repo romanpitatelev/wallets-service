@@ -1,4 +1,4 @@
-//nolint:testpackage
+//nolint:testpackage,dupl
 package service
 
 import (
@@ -15,8 +15,6 @@ import (
 
 //nolint:funlen
 func TestDeposit(t *testing.T) {
-	t.Parallel()
-
 	ctx := context.Background()
 	userID := uuid.New()
 	walletID := uuid.New()
@@ -128,8 +126,6 @@ func TestDeposit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
@@ -331,8 +327,6 @@ func TestWithdrawFunds(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
@@ -362,8 +356,6 @@ func TestWithdrawFunds(t *testing.T) {
 
 //nolint:funlen,maintidx
 func TestTransfer(t *testing.T) {
-	t.Parallel()
-
 	ctx := context.Background()
 	userID := uuid.New()
 	fromWalletID := uuid.New()
@@ -600,8 +592,6 @@ func TestTransfer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
