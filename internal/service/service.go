@@ -32,8 +32,9 @@ type xrClient interface {
 	GetRate(ctx context.Context, from string, to string) (float64, error)
 }
 
+//go:generate mockgen -source=service.go -destination=./mocks/transactions_mock.gen.go -package=mocks txProducer
 type txProducer interface {
-	SendTxToKafka(transaction models.Transaction) error
+	ProduceTxToKafka(transaction models.Transaction) error
 }
 
 type Config struct {
@@ -182,7 +183,7 @@ func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, u
 			return fmt.Errorf("failed deposit: %w", err)
 		}
 
-		if err := s.producer.SendTxToKafka(transaction); err != nil {
+		if err := s.producer.ProduceTxToKafka(transaction); err != nil {
 			return fmt.Errorf("failed to produce deposit transaction: %w", err)
 		}
 
@@ -218,7 +219,7 @@ func (s *Service) WithdrawFunds(ctx context.Context, transaction models.Transact
 			return fmt.Errorf("failed withdrawal: %w", err)
 		}
 
-		if err := s.producer.SendTxToKafka(transaction); err != nil {
+		if err := s.producer.ProduceTxToKafka(transaction); err != nil {
 			return fmt.Errorf("failed to produce withdrawFunds transaction: %w", err)
 		}
 
@@ -265,7 +266,7 @@ func (s *Service) Transfer(ctx context.Context, transaction models.Transaction, 
 			return fmt.Errorf("transfer of funds failed: %w", err)
 		}
 
-		if err := s.producer.SendTxToKafka(transaction); err != nil {
+		if err := s.producer.ProduceTxToKafka(transaction); err != nil {
 			return fmt.Errorf("failed to produce transfer transaction: %w", err)
 		}
 

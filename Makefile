@@ -38,3 +38,6 @@ image_usergen:
 
 image_xr:
 	docker build -t xr-service -f deployment/xr-service/Dockerfile .
+
+generate:
+	go generate ./...

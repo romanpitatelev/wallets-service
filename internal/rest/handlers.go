@@ -42,7 +42,7 @@ func (s *Server) createWallet(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
 
-	validWallet, err := s.validateWallet(wallet)
+	err := wallet.Validate()
 	if err != nil {
 		log.Info().Err(err).Msg("wallet has failed validation check")
 		http.Error(w, "wallet validation error", http.StatusBadRequest)
@@ -50,7 +50,7 @@ func (s *Server) createWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validateUser, err := s.validateUser(wallet.UserID, userInfo.UserID)
+	err = userInfo.Validate(wallet.UserID)
 	if err != nil {
 		log.Info().Err(err).Msg("user has failed validation check")
 		http.Error(w, "user validation error", http.StatusNotFound)
@@ -58,7 +58,7 @@ func (s *Server) createWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createdWallet, err := s.service.CreateWallet(r.Context(), validWallet, validateUser)
+	createdWallet, err := s.service.CreateWallet(r.Context(), wallet, userInfo.UserID)
 	if err != nil {
 		log.Info().Err(err).Msg("failed to create wallet")
 		http.Error(w, "error", http.StatusInternalServerError)
@@ -276,25 +276,6 @@ func parseGetRequest(r *http.Request) models.GetWalletsRequest {
 	return parameters
 }
 
-func (s *Server) validateWallet(wallet models.Wallet) (models.Wallet, error) {
-	if wallet.WalletName == "" {
-		return wallet, models.ErrWalletEmptyName
-	}
-
-	wallet.Balance = 0
-	wallet.Active = true
-
-	return wallet, nil
-}
-
-func (s *Server) validateUser(walletUserID uuid.UUID, userID uuid.UUID) (uuid.UUID, error) {
-	if walletUserID != userID {
-		return userID, models.ErrWrongUserID
-	}
-
-	return userID, nil
-}
-
 func (s *Server) deposit(w http.ResponseWriter, r *http.Request) {
 	var transaction models.Transaction
 
@@ -308,7 +289,7 @@ func (s *Server) deposit(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
 
-	if err := s.validateTransaction(transaction); err != nil {
+	if err := transaction.Validate(); err != nil {
 		log.Info().Err(err).Msg("deposit transaction failed")
 		http.Error(w, "transaction validation error", http.StatusBadRequest)
 
@@ -358,7 +339,7 @@ func (s *Server) withdrawFunds(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
 
-	if err := s.validateTransaction(transaction); err != nil {
+	if err := transaction.Validate(); err != nil {
 		log.Info().Err(err).Msg("withdrawal failed")
 		http.Error(w, "transaction validation error", http.StatusBadRequest)
 
@@ -408,7 +389,7 @@ func (s *Server) transfer(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
 
-	if err := s.validateTransaction(transaction); err != nil {
+	if err := transaction.Validate(); err != nil {
 		log.Info().Err(err).Msg("withdrawal failed")
 		http.Error(w, "transaction validation error", http.StatusBadRequest)
 
@@ -478,17 +459,4 @@ func (s *Server) getTransactions(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-}
-
-func (s *Server) validateTransaction(t models.Transaction) error {
-	switch {
-	case t.Amount == 0:
-		return models.ErrZeroAmount
-	case t.Amount < 0:
-		return models.ErrNegativeAmount
-	case t.FromWalletID == t.ToWalletID:
-		return models.ErrSameWallet
-	}
-
-	return nil
 }

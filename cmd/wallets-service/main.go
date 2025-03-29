@@ -6,9 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/romanpitatelev/wallets-service/internal/broker"
 	"github.com/romanpitatelev/wallets-service/internal/configs"
-	"github.com/romanpitatelev/wallets-service/internal/consumer"
-	"github.com/romanpitatelev/wallets-service/internal/producer"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
@@ -36,7 +35,7 @@ func main() {
 
 	log.Info().Msg("successful migration")
 
-	kafkaConsumer, err := consumer.New(pgStore, consumer.Config{Addr: conf.GetKafkaAddress()})
+	kafkaConsumer, err := broker.NewConsumer(pgStore, broker.ConsumerConfig{Addr: conf.GetKafkaAddress()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to create kafka consumer")
 	}
@@ -49,7 +48,7 @@ func main() {
 
 	log.Info().Msg("kafka consumer created")
 
-	kafkaTxProducer, err := producer.New(producer.Config{Addr: conf.GetKafkaAddress()})
+	kafkaTxProducer, err := broker.NewProducer(broker.ProducerConfig{Addr: conf.GetKafkaAddress()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to create kafka transactions producer")
 	}

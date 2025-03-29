@@ -91,3 +91,35 @@ type Transaction struct {
 	Currency     string    `json:"currency"`
 	CommittedAt  time.Time `json:"committedAt"`
 }
+
+func (w *Wallet) Validate() error {
+	if w.WalletName == "" {
+		return ErrWalletEmptyName
+	}
+
+	w.Balance = 0
+	w.Active = true
+
+	return nil
+}
+
+func (u *UserInfo) Validate(walletUserID uuid.UUID) error {
+	if walletUserID != u.UserID {
+		return ErrWrongUserID
+	}
+
+	return nil
+}
+
+func (t *Transaction) Validate() error {
+	switch {
+	case t.Amount == 0:
+		return ErrZeroAmount
+	case t.Amount < 0:
+		return ErrNegativeAmount
+	case t.FromWalletID == t.ToWalletID:
+		return ErrSameWallet
+	}
+
+	return nil
+}

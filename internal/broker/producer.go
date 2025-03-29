@@ -1,4 +1,4 @@
-package producer
+package broker
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 
 const transactiontTopic = "transaction_update"
 
-type Config struct {
+type ProducerConfig struct {
 	Addr string
 }
 
@@ -18,7 +18,7 @@ type Producer struct {
 	producer sarama.SyncProducer
 }
 
-func New(conf Config) (*Producer, error) {
+func NewProducer(conf ProducerConfig) (*Producer, error) {
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
 
@@ -38,7 +38,7 @@ func (p *Producer) Close() error {
 	return nil
 }
 
-func (p *Producer) SendTxToKafka(transaction models.Transaction) error {
+func (p *Producer) ProduceTxToKafka(transaction models.Transaction) error {
 	bytes, err := json.Marshal(transaction)
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON when sending tx to kafka: %w", err)
