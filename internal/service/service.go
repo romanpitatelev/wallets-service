@@ -75,8 +75,6 @@ func (s *Service) Run(ctx context.Context) error {
 }
 
 func (s *Service) CreateWallet(ctx context.Context, wallet models.Wallet, userID uuid.UUID) (models.Wallet, error) {
-	log.Info().Str("walletID", wallet.WalletID.String()).Msg("Creating wallet")
-
 	wallet, err := s.walletStore.CreateWallet(ctx, wallet, userID)
 	if err != nil {
 		return models.Wallet{}, fmt.Errorf("failed to create wallet: %w", err)
@@ -102,8 +100,6 @@ func (s *Service) GetWallet(ctx context.Context, walletID uuid.UUID, userID uuid
 }
 
 func (s *Service) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoWallet models.WalletUpdate, userID uuid.UUID) (models.Wallet, error) {
-	log.Info().Str("walletID", walletID.String()).Msg("Updating wallet")
-
 	var updatedWallet models.Wallet
 
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
@@ -143,8 +139,6 @@ func (s *Service) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoW
 }
 
 func (s *Service) DeleteWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) error {
-	log.Info().Str("walletID", walletID.String()).Msg("Deleting wallet")
-
 	if err := s.walletStore.DeleteWallet(ctx, walletID, userID); err != nil {
 		return fmt.Errorf("failed to delete: %w", err)
 	}
