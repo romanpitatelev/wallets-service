@@ -278,7 +278,7 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"
 
-		s.sendRequest(http.MethodPut, walletIDPath, http.StatusBadRequest, &transaction, nil, existingUser)
+		s.sendRequest(http.MethodPut, walletIDPath, http.StatusConflict, &transaction, nil, existingUser)
 
 		var nonmodifiedWallet models.Wallet
 
@@ -290,7 +290,7 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 		s.Require().Equal(nonmodifiedWallet.Balance, createdWallet.Balance)
 	})
 
-	s.Run("withdrawal in foreign currency processed succussfully", func() {
+	s.Run("withdrawal in foreign currency processed successfully", func() {
 		uuidString = createdWallet.WalletID.String()
 		walletIDPath = walletPath + "/" + uuidString
 
@@ -338,7 +338,7 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"
 
-		s.sendRequest(http.MethodPut, walletIDPath, http.StatusBadRequest, &transaction, nil, existingUser)
+		s.sendRequest(http.MethodPut, walletIDPath, http.StatusConflict, &transaction, nil, existingUser)
 
 		var nonmodifiedWallet models.Wallet
 
@@ -594,7 +594,7 @@ func (s *IntegrationTestSuite) TestTransfer() {
 		uuidString := createdFromWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString + "/transfer"
 
-		s.sendRequest(http.MethodPut, walletIDPath, http.StatusBadRequest, &transaction, nil, existingUser)
+		s.sendRequest(http.MethodPut, walletIDPath, http.StatusConflict, &transaction, nil, existingUser)
 	})
 
 	s.Run("wrong currency transaction failed", func() {

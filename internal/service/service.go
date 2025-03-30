@@ -23,9 +23,9 @@ type walletStore interface {
 	ArchiveStaleWallets(ctx context.Context, checkPeriod time.Duration) error
 	DoWithTx(ctx context.Context, fn func(ctx context.Context) error) error
 	Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
-	WithdrawFunds(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
+	Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
 	Transfer(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
-	GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID) ([]models.Transaction, error)
+	GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID, userID uuid.UUID) ([]models.Transaction, error)
 }
 
 type xrClient interface {
@@ -49,7 +49,7 @@ type Service struct {
 	producer    txProducer
 }
 
-func New(walletStore walletStore, cfg Config, xrClient xrClient, producer txProducer) *Service {
+func New(cfg Config, walletStore walletStore, xrClient xrClient, producer txProducer) *Service {
 	return &Service{
 		cfg:         cfg,
 		walletStore: walletStore,
@@ -170,7 +170,7 @@ func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, u
 
 		rate := defaultRate
 
-		if dbWallet.Currency != strings.ToUpper(transaction.Currency) {
+		if !strings.EqualFold(dbWallet.Currency, transaction.Currency) {
 			rate, err = s.xrClient.GetRate(ctx, transaction.Currency, dbWallet.Currency)
 
 			log.Debug().Msgf("exchange rate for transaction: %v", rate)
@@ -195,7 +195,7 @@ func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, u
 	return nil
 }
 
-func (s *Service) WithdrawFunds(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error {
+func (s *Service) Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error {
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
 		dbWallet, err := s.walletStore.GetWallet(ctx, transaction.FromWalletID, userID)
 		if err != nil {
@@ -204,7 +204,7 @@ func (s *Service) WithdrawFunds(ctx context.Context, transaction models.Transact
 
 		rate := defaultRate
 
-		if dbWallet.Currency != strings.ToUpper(transaction.Currency) {
+		if !strings.EqualFold(dbWallet.Currency, transaction.Currency) {
 			rate, err = s.xrClient.GetRate(ctx, transaction.Currency, dbWallet.Currency)
 			if err != nil {
 				return fmt.Errorf("failed to obtain exchange rate: %w", err)
@@ -215,12 +215,12 @@ func (s *Service) WithdrawFunds(ctx context.Context, transaction models.Transact
 			return models.ErrInsufficientFunds
 		}
 
-		if err := s.walletStore.WithdrawFunds(ctx, transaction, userID, rate); err != nil {
+		if err := s.walletStore.Withdraw(ctx, transaction, userID, rate); err != nil {
 			return fmt.Errorf("failed withdrawal: %w", err)
 		}
 
 		if err := s.producer.ProduceTxToKafka(transaction); err != nil {
-			return fmt.Errorf("failed to produce withdrawFunds transaction: %w", err)
+			return fmt.Errorf("failed to produce withdraw transaction: %w", err)
 		}
 
 		return nil
@@ -243,7 +243,7 @@ func (s *Service) Transfer(ctx context.Context, transaction models.Transaction, 
 			return fmt.Errorf("wallet not found: %w", err)
 		}
 
-		if strings.ToUpper(transaction.Currency) != dbFromTransferWallet.Currency {
+		if !strings.EqualFold(transaction.Currency, dbFromTransferWallet.Currency) {
 			return models.ErrWrongCurrency
 		}
 
@@ -279,12 +279,7 @@ func (s *Service) Transfer(ctx context.Context, transaction models.Transaction, 
 }
 
 func (s *Service) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID, userID uuid.UUID) ([]models.Transaction, error) {
-	_, err := s.GetWallet(ctx, walletID, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract wallet: %w", err)
-	}
-
-	transactions, err := s.walletStore.GetTransactions(ctx, request, walletID)
+	transactions, err := s.walletStore.GetTransactions(ctx, request, walletID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting all the transactions info: %w", err)
 	}

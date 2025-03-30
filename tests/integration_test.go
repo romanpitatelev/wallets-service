@@ -84,11 +84,11 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	log.Debug().Msg("xr client is ready")
 
 	s.service = service.New(
-		s.db,
 		service.Config{
 			StaleWalletDuration: 0,
 			PerformCheckPeriod:  0,
 		},
+		s.db,
 		s.client,
 		s.txProducer,
 	)

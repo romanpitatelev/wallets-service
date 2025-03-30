@@ -109,18 +109,18 @@ func (mr *MockwalletStoreMockRecorder) DoWithTx(ctx, fn interface{}) *gomock.Cal
 }
 
 // GetTransactions mocks base method.
-func (m *MockwalletStore) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID) ([]models.Transaction, error) {
+func (m *MockwalletStore) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID, userID uuid.UUID) ([]models.Transaction, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTransactions", ctx, request, walletID)
+	ret := m.ctrl.Call(m, "GetTransactions", ctx, request, walletID, userID)
 	ret0, _ := ret[0].([]models.Transaction)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTransactions indicates an expected call of GetTransactions.
-func (mr *MockwalletStoreMockRecorder) GetTransactions(ctx, request, walletID interface{}) *gomock.Call {
+func (mr *MockwalletStoreMockRecorder) GetTransactions(ctx, request, walletID, userID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransactions", reflect.TypeOf((*MockwalletStore)(nil).GetTransactions), ctx, request, walletID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransactions", reflect.TypeOf((*MockwalletStore)(nil).GetTransactions), ctx, request, walletID, userID)
 }
 
 // GetWallet mocks base method.
@@ -182,18 +182,18 @@ func (mr *MockwalletStoreMockRecorder) UpdateWallet(ctx, walletID, updatedWallet
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateWallet", reflect.TypeOf((*MockwalletStore)(nil).UpdateWallet), ctx, walletID, updatedWallet, rate, userID)
 }
 
-// WithdrawFunds mocks base method.
-func (m *MockwalletStore) WithdrawFunds(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
+// Withdraw mocks base method.
+func (m *MockwalletStore) Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WithdrawFunds", ctx, transaction, userID, rate)
+	ret := m.ctrl.Call(m, "Withdraw", ctx, transaction, userID, rate)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// WithdrawFunds indicates an expected call of WithdrawFunds.
-func (mr *MockwalletStoreMockRecorder) WithdrawFunds(ctx, transaction, userID, rate interface{}) *gomock.Call {
+// Withdraw indicates an expected call of Withdraw.
+func (mr *MockwalletStoreMockRecorder) Withdraw(ctx, transaction, userID, rate interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithdrawFunds", reflect.TypeOf((*MockwalletStore)(nil).WithdrawFunds), ctx, transaction, userID, rate)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Withdraw", reflect.TypeOf((*MockwalletStore)(nil).Withdraw), ctx, transaction, userID, rate)
 }
 
 // MockxrClient is a mock of xrClient interface.

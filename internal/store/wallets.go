@@ -15,9 +15,10 @@ import (
 )
 
 func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet, userID uuid.UUID) (models.Wallet, error) {
-	query := `INSERT INTO wallets (wallet_id, user_id, wallet_name, currency)
-		VALUES ($1, $2, $3, $4)
-		RETURNING wallet_id, user_id, wallet_name, balance, currency, created_at, updated_at, active`
+	query := `
+	INSERT INTO wallets (wallet_id, user_id, wallet_name, currency)
+	VALUES ($1, $2, $3, $4)
+	RETURNING wallet_id, user_id, wallet_name, balance, currency, created_at, updated_at, active`
 
 	row := d.pool.QueryRow(ctx, query,
 		wallet.WalletID,
@@ -53,9 +54,13 @@ type querier interface {
 func (d *DataStore) GetWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) (models.Wallet, error) {
 	var wallet models.Wallet
 
-	query := `SELECT wallet_id, user_id, wallet_name, balance, currency, created_at, updated_at, active
-				FROM wallets
-				WHERE wallet_id = $1 AND user_id = $2 AND deleted_at IS NULL`
+	query := `
+	SELECT wallet_id, user_id, wallet_name, balance, currency, created_at, updated_at, active
+	FROM wallets
+	WHERE TRUE 
+		AND wallet_id = $1 
+		AND user_id = $2 
+		AND deleted_at IS NULL`
 
 	var db querier
 
@@ -90,10 +95,14 @@ func (d *DataStore) GetWallet(ctx context.Context, walletID uuid.UUID, userID uu
 
 //nolint:lll
 func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoWallet models.WalletUpdate, rate float64, userID uuid.UUID) (models.Wallet, error) {
-	query := `UPDATE wallets
-		SET wallet_name = $1, currency = $2, balance = $3 * balance, updated_at = $4
-		WHERE wallet_id = $5 AND user_id = $6 AND deleted_at IS NULL
-		RETURNING wallet_id, user_id, wallet_name, balance, currency, created_at, updated_at, deleted_at, active`
+	query := `
+	UPDATE wallets
+	SET wallet_name = $1, currency = $2, balance = $3 * balance, updated_at = $4
+	WHERE TRUE 
+		AND wallet_id = $5 
+		AND user_id = $6 
+		AND deleted_at IS NULL
+	RETURNING wallet_id, user_id, wallet_name, balance, currency, created_at, updated_at, deleted_at, active`
 
 	updatedAt := time.Now()
 
@@ -144,12 +153,14 @@ func (d *DataStore) DeleteWallet(ctx context.Context, walletID uuid.UUID, userID
 		return models.ErrNonZeroBalanceWallet
 	}
 
-	query := `UPDATE wallets
-				SET deleted_at = NOW(), active = false
-				WHERE wallet_id = $1 
-					AND user_id = $2
-					AND deleted_at IS NULL 
-					AND active = true`
+	query := `
+	UPDATE wallets
+	SET deleted_at = NOW(), active = false
+	WHERE TRUE 
+		AND wallet_id = $1 
+		AND user_id = $2
+		AND deleted_at IS NULL 
+		AND active = true`
 
 	_, err = d.pool.Exec(ctx, query, walletID, userID)
 	if err != nil {
