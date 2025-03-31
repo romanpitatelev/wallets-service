@@ -51,16 +51,14 @@ func (s *IntegrationTestSuite) TestDeposit() {
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusOK, &transaction, nil, existingUser)
 
-		var updatedWallet models.Wallet
-
 		uuidString = createdWallet.WalletID.String()
 		walletIDPath = walletPath + "/" + uuidString
 
-		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &updatedWallet, existingUser)
+		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdWallet, existingUser)
 
 		expectedBalance := transaction.Amount
 
-		s.Require().True(math.Abs(updatedWallet.Balance-expectedBalance) < epsilon)
+		s.Require().True(math.Abs(createdWallet.Balance-expectedBalance) < epsilon)
 	})
 
 	s.Run("deposit foreign currency successful", func() {
