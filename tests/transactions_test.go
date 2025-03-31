@@ -46,9 +46,6 @@ func (s *IntegrationTestSuite) TestDeposit() {
 			Currency:   "USD",
 		}
 
-		_, err := s.verifyWalletExists(createdWallet.WalletID, existingUser)
-		s.Require().NoError(err, "wallet should exist before deposit")
-
 		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
@@ -73,9 +70,6 @@ func (s *IntegrationTestSuite) TestDeposit() {
 			Amount:     500,
 			Currency:   "CHF",
 		}
-
-		_, err := s.verifyWalletExists(createdWallet.WalletID, existingUser)
-		s.Require().NoError(err, "wallet should exist before deposit")
 
 		currency := Currency{Name: transaction.Currency, Value: exchangeRatesToRub[transaction.Currency] / exchangeRatesToRub[wallet.Currency]}
 
@@ -109,9 +103,6 @@ func (s *IntegrationTestSuite) TestDeposit() {
 			Currency:   "USD",
 		}
 
-		_, err := s.verifyWalletExists(createdWallet.WalletID, existingUser)
-		s.Require().NoError(err, "wallet should exist before deposit")
-
 		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
@@ -125,9 +116,6 @@ func (s *IntegrationTestSuite) TestDeposit() {
 			Amount:     200.0,
 			Currency:   "TRY",
 		}
-
-		_, err := s.verifyWalletExists(createdWallet.WalletID, existingUser)
-		s.Require().NoError(err, "wallet should exist before deposit")
 
 		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString + "/deposit"
@@ -257,9 +245,6 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 			Currency:     "RUB",
 		}
 
-		_, err := s.verifyWalletExists(createdWallet.WalletID, existingUser)
-		s.Require().NoError(err, "wallet should exist before withdrawal")
-
 		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"
 
@@ -280,9 +265,6 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 	s.Run("withdrawal amount in wallet currency exceeds wallet balance", func() {
 		uuidString = createdWallet.WalletID.String()
 		walletIDPath = walletPath + "/" + uuidString
-
-		_, err := s.verifyWalletExists(createdWallet.WalletID, existingUser)
-		s.Require().NoError(err, "wallet should exist before withdrawal")
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdWallet, existingUser)
 
@@ -311,9 +293,6 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 	s.Run("withdrawal in foreign currency processed successfully", func() {
 		uuidString = createdWallet.WalletID.String()
 		walletIDPath = walletPath + "/" + uuidString
-
-		_, err := s.verifyWalletExists(createdWallet.WalletID, existingUser)
-		s.Require().NoError(err, "wallet should exist before withdrawal")
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdWallet, existingUser)
 
@@ -347,9 +326,6 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 		uuidString = createdWallet.WalletID.String()
 		walletIDPath = walletPath + "/" + uuidString
 
-		_, err := s.verifyWalletExists(createdWallet.WalletID, existingUser)
-		s.Require().NoError(err, "wallet should exist before withdrawal")
-
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdWallet, existingUser)
 
 		transaction := models.Transaction{
@@ -381,9 +357,6 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 			Amount:       0.0,
 			Currency:     "RUB",
 		}
-
-		_, err := s.verifyWalletExists(createdWallet.WalletID, existingUser)
-		s.Require().NoError(err, "wallet should exist before withdrawal")
 
 		uuidString := createdWallet.WalletID.String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"

@@ -10,6 +10,11 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: my_pass
       POSTGRES_DB: wallets_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d wallets_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   kafka:
     container_name: kafka_wallets
@@ -29,6 +34,14 @@ services:
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 9092 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   user-generator:
     container_name: user_generator
@@ -50,5 +63,6 @@ services:
 
 volumes:
   postgres-data:
+    driver: local
   kafka_data:
     driver: local
