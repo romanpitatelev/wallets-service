@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/romanpitatelev/wallets-service/internal/broker"
 	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
@@ -183,4 +184,31 @@ func (s *IntegrationTestSuite) getToken(user models.User) string {
 	s.Require().NoError(err)
 
 	return token
+}
+
+func (s *IntegrationTestSuite) verifyWalletExists(walletID uuid.UUID, user models.User) (models.Wallet, error) {
+	var wallet models.Wallet
+	var err error
+
+	maxRetries := 5
+	for i := 0; i < maxRetries; i++ {
+		uuidString := walletID.String()
+		walletIDPath := walletPath + "/" + uuidString
+
+		err = func() error {
+			s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &wallet, user)
+			if wallet.WalletID != walletID {
+				return fmt.Errorf("wallet not found")
+			}
+			return nil
+		}()
+
+		if err == nil {
+			return wallet, nil
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
+	return models.Wallet{}, fmt.Errorf("wallet verification timed out after %d attempts: %w", maxRetries, err)
 }
