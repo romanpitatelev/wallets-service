@@ -17,6 +17,8 @@ import (
 func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
 	tx := d.getTXFromCtx(ctx)
 
+	time.Sleep(200 * time.Millisecond)
+
 	query := `
 	UPDATE wallets
 	SET balance = balance + $3::numeric * $4::numeric, updated_at = NOW() 
@@ -71,6 +73,8 @@ func (d *DataStore) Withdraw(ctx context.Context, transaction models.Transaction
 func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
 	tx := d.getTXFromCtx(ctx)
 
+	time.Sleep(200 * time.Millisecond)
+
 	queryFrom := `
 	UPDATE wallets
 	SET balance = balance - $3::numeric, updated_at = NOW()
@@ -109,6 +113,8 @@ func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction
 }
 
 func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID, userID uuid.UUID) ([]models.Transaction, error) {
+	time.Sleep(200 * time.Millisecond)
+
 	_, err := d.GetWallet(ctx, walletID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract wallet: %w", err)
