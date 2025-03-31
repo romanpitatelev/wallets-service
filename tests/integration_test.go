@@ -164,6 +164,7 @@ func (s *IntegrationTestSuite) sendRequest(method, path string, status int, enti
 
 	err = json.NewDecoder(response.Body).Decode(result)
 	s.Require().NoError(err)
+
 }
 
 func (s *IntegrationTestSuite) getToken(user models.User) string {
