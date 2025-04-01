@@ -58,6 +58,7 @@ var (
 	ErrNegativeAmount       = errors.New("negative amount transaction")
 	ErrSameWallet           = errors.New("same wallet transaction")
 	ErrInsufficientFunds    = errors.New("wallet has insufficient funds")
+	ErrInvalidTransaction   = errors.New("invalid wallets' data in transaction")
 )
 
 type XRRequest struct {
@@ -119,6 +120,24 @@ func (t *Transaction) Validate() error {
 		return ErrNegativeAmount
 	case t.FromWalletID == t.ToWalletID:
 		return ErrSameWallet
+	default:
+		if t.Type == "deposit" {
+			if t.ToWalletID == uuid.Nil || t.FromWalletID != uuid.Nil {
+				return ErrInvalidTransaction
+			}
+		}
+
+		if t.Type == "withdraw" {
+			if t.ToWalletID != uuid.Nil || t.FromWalletID == uuid.Nil {
+				return ErrInvalidTransaction
+			}
+		}
+
+		if t.Type == "transfer" {
+			if t.ToWalletID == uuid.Nil || t.FromWalletID == uuid.Nil {
+				return ErrInvalidTransaction
+			}
+		}
 	}
 
 	return nil

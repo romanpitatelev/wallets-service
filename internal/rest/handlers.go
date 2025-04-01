@@ -268,6 +268,8 @@ func (s *Server) deposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	transaction.Type = "deposit"
+
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
 
@@ -313,6 +315,8 @@ func (s *Server) withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	transaction.Type = "withdraw"
+
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
 
@@ -356,6 +360,8 @@ func (s *Server) transfer(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
 		http.Error(w, "error", http.StatusBadRequest)
 	}
+
+	transaction.Type = "transfer"
 
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
