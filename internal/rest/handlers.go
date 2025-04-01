@@ -24,7 +24,7 @@ type service interface {
 	DeleteWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) error
 	GetAllWallets(ctx context.Context, request models.GetWalletsRequest, userID uuid.UUID) ([]models.Wallet, error)
 	Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error
-	WithdrawFunds(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error
+	Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error
 	Transfer(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error
 	GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID, userID uuid.UUID) ([]models.Transaction, error)
 }
@@ -304,7 +304,7 @@ func (s *Server) deposit(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) withdrawFunds(w http.ResponseWriter, r *http.Request) {
+func (s *Server) withdraw(w http.ResponseWriter, r *http.Request) {
 	var transaction models.Transaction
 
 	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
@@ -328,7 +328,7 @@ func (s *Server) withdrawFunds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.service.WithdrawFunds(r.Context(), transaction, userInfo.UserID); err != nil {
+	if err := s.service.Withdraw(r.Context(), transaction, userInfo.UserID); err != nil {
 		switch {
 		case errors.Is(err, models.ErrWalletNotFound):
 			http.Error(w, "wallet not found", http.StatusNotFound)

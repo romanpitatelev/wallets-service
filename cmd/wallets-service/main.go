@@ -61,15 +61,15 @@ func main() {
 		}
 	}()
 
-	client := xrclient.New(xrclient.Config{ServerAddress: conf.GetXRServerAddress()})
+	xrClient := xrclient.New(xrclient.Config{ServerAddress: conf.GetXRServerAddress()})
 
 	svc := service.New(
-		pgStore,
 		service.Config{
 			StaleWalletDuration: conf.GetStaleWalletDuration(),
 			PerformCheckPeriod:  conf.GetPerformCheckPeriod(),
 		},
-		client,
+		pgStore,
+		xrClient,
 		kafkaTxProducer,
 	)
 

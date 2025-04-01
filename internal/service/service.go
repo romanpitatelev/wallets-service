@@ -23,7 +23,7 @@ type walletStore interface {
 	ArchiveStaleWallets(ctx context.Context, checkPeriod time.Duration) error
 	DoWithTx(ctx context.Context, fn func(ctx context.Context) error) error
 	Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
-	WithdrawFunds(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
+	Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
 	Transfer(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
 	GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID) ([]models.Transaction, error)
 }
@@ -49,7 +49,7 @@ type Service struct {
 	producer    txProducer
 }
 
-func New(walletStore walletStore, cfg Config, xrClient xrClient, producer txProducer) *Service {
+func New(cfg Config, walletStore walletStore, xrClient xrClient, producer txProducer) *Service {
 	return &Service{
 		cfg:         cfg,
 		walletStore: walletStore,
@@ -195,7 +195,7 @@ func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, u
 	return nil
 }
 
-func (s *Service) WithdrawFunds(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error {
+func (s *Service) Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error {
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
 		dbWallet, err := s.walletStore.GetWallet(ctx, transaction.FromWalletID, userID)
 		if err != nil {
@@ -215,7 +215,7 @@ func (s *Service) WithdrawFunds(ctx context.Context, transaction models.Transact
 			return models.ErrInsufficientFunds
 		}
 
-		if err := s.walletStore.WithdrawFunds(ctx, transaction, userID, rate); err != nil {
+		if err := s.walletStore.Withdraw(ctx, transaction, userID, rate); err != nil {
 			return fmt.Errorf("failed withdrawal: %w", err)
 		}
 

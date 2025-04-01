@@ -154,7 +154,7 @@ func TestDeposit(t *testing.T) {
 }
 
 //nolint:funlen
-func TestWithdrawFunds(t *testing.T) {
+func TestWithdraw(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -197,7 +197,7 @@ func TestWithdrawFunds(t *testing.T) {
 					Currency: "USD",
 					Balance:  500.0,
 				}, nil)
-				ws.EXPECT().WithdrawFunds(ctx, gomock.Any(), userID, 1.0).Return(nil)
+				ws.EXPECT().Withdraw(ctx, gomock.Any(), userID, 1.0).Return(nil)
 				tp.EXPECT().ProduceTxToKafka(gomock.Any()).Return(nil)
 			},
 		},
@@ -229,7 +229,7 @@ func TestWithdrawFunds(t *testing.T) {
 					Balance:  500.0,
 				}, nil)
 				xr.EXPECT().GetRate(ctx, "EUR", "USD").Return(1.11, nil)
-				ws.EXPECT().WithdrawFunds(ctx, gomock.Any(), userID, 1.11).Return(nil)
+				ws.EXPECT().Withdraw(ctx, gomock.Any(), userID, 1.11).Return(nil)
 				tp.EXPECT().ProduceTxToKafka(gomock.Any()).Return(nil)
 			},
 		},
@@ -342,7 +342,7 @@ func TestWithdrawFunds(t *testing.T) {
 				producer:    mockTxProducer,
 			}
 
-			err := svc.WithdrawFunds(ctx, tt.transaction, userID)
+			err := svc.Withdraw(ctx, tt.transaction, userID)
 
 			if tt.expectedErr != nil {
 				require.Error(t, err)

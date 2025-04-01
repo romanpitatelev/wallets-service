@@ -50,7 +50,7 @@ func New(conf Config, service service, key *rsa.PublicKey) *Server {
 		r.Get("/wallets", s.getWallets)
 
 		r.Put("/wallets/{walletId}/deposit", s.deposit)
-		r.Put("/wallets/{walletId}/withdrawal", s.withdrawFunds)
+		r.Put("/wallets/{walletId}/withdrawal", s.withdraw)
 		r.Put("/wallets/{walletId}/transfer", s.transfer)
 		r.Get("/wallets/{walletId}/transactions", s.getTransactions)
 	})

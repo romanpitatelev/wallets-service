@@ -53,7 +53,7 @@ func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction,
 	return nil
 }
 
-func (d *DataStore) WithdrawFunds(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
+func (d *DataStore) Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
 	tx, err := d.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
