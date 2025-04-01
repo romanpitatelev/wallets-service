@@ -97,10 +97,12 @@ func (d *DataStore) Migrate(direction migrate.MigrationDirection) error {
 }
 
 func (d *DataStore) UpsertUser(ctx context.Context, users models.User) error {
-	query := `INSERT INTO users (user_id, deleted_at)
-		VALUES ($1, $2)
-		ON CONFLICT (user_id) 
-		DO UPDATE SET deleted_at = excluded.deleted_at`
+	query := `
+INSERT INTO users (user_id, deleted_at)
+VALUES ($1, $2)
+ON CONFLICT (user_id) 
+DO UPDATE 
+SET deleted_at = excluded.deleted_at`
 
 	_, err := d.pool.Exec(ctx, query, users.UserID, users.DeletedAt)
 	if err != nil {

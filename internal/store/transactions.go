@@ -27,9 +27,13 @@ func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction,
 		}
 	}()
 
-	query := `UPDATE wallets
-				SET balance = balance + $3::numeric * $4::numeric, updated_at = NOW() 
-				WHERE wallet_id = $1 AND user_id = $2 AND active = true`
+	query := `
+UPDATE wallets
+SET balance = balance + $3::numeric * $4::numeric, updated_at = NOW() 
+WHERE TRUE
+	AND wallet_id = $1 
+	AND user_id = $2 
+	AND active = true`
 
 	result, err := tx.Exec(ctx, query, transaction.ToWalletID, userID, transaction.Amount, rate)
 	if err != nil {
@@ -63,9 +67,13 @@ func (d *DataStore) Withdraw(ctx context.Context, transaction models.Transaction
 		}
 	}()
 
-	query := `UPDATE wallets
-				SET balance = balance - $3::numeric * $4::numeric, updated_at = NOW()
-				WHERE wallet_id = $1 AND user_id = $2 AND active = true`
+	query := `
+UPDATE wallets
+SET balance = balance - $3::numeric * $4::numeric, updated_at = NOW()
+WHERE TRUE 
+	AND wallet_id = $1 
+	AND user_id = $2 
+	AND active = true`
 
 	result, err := tx.Exec(ctx, query, transaction.FromWalletID, userID, transaction.Amount, rate)
 	if err != nil {
@@ -99,9 +107,13 @@ func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction
 		}
 	}()
 
-	queryFrom := `UPDATE wallets
-					SET balance = balance - $3::numeric, updated_at = NOW()
-					WHERE wallet_id = $1 AND user_id = $2 AND active = true`
+	queryFrom := `
+UPDATE wallets
+SET balance = balance - $3::numeric, updated_at = NOW()
+WHERE TRUE 
+	AND wallet_id = $1 
+	AND user_id = $2 
+	AND active = true`
 
 	resultFrom, err := tx.Exec(ctx, queryFrom, transaction.FromWalletID, userID, transaction.Amount)
 	if err != nil {
@@ -112,9 +124,13 @@ func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction
 		return models.ErrWalletNotFound
 	}
 
-	queryTo := `UPDATE wallets
-				SET balance = balance + $3::numeric * $4::numeric, updated_at = NOW()
-				WHERE wallet_id = $1 AND user_id = $2 AND active = true`
+	queryTo := `
+UPDATE wallets
+SET balance = balance + $3::numeric * $4::numeric, updated_at = NOW()
+WHERE TRUE 
+	AND wallet_id = $1 
+	AND user_id = $2 
+	AND active = true`
 
 	resultTo, err := tx.Exec(ctx, queryTo, transaction.ToWalletID, userID, transaction.Amount, rate)
 	if err != nil {
