@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -10,20 +9,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/romanpitatelev/wallets-service/internal/models"
-	"github.com/rs/zerolog/log"
 )
 
 func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
-	tx, err := d.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-
-	defer func() {
-		if err = tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			log.Warn().Err(err).Msg("failed to rollback transaction")
-		}
-	}()
+	tx := d.getTXFromCtx(ctx)
 
 	query := `
 UPDATE wallets
@@ -46,24 +35,11 @@ WHERE TRUE
 		return fmt.Errorf("failed to store transaction into database: %w", err)
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
 	return nil
 }
 
 func (d *DataStore) Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
-	tx, err := d.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-
-	defer func() {
-		if err = tx.Rollback(ctx); err != nil && errors.Is(err, pgx.ErrTxClosed) {
-			log.Warn().Err(err).Msg("failed to rollback transaction")
-		}
-	}()
+	tx := d.getTXFromCtx(ctx)
 
 	query := `
 UPDATE wallets
@@ -86,24 +62,11 @@ WHERE TRUE
 		return fmt.Errorf("failed to store transaction into database: %w", err)
 	}
 
-	if err = tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
 	return nil
 }
 
 func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
-	tx, err := d.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-
-	defer func() {
-		if err = tx.Rollback(ctx); err != nil && errors.Is(err, pgx.ErrTxClosed) {
-			log.Warn().Err(err).Msg("failed to roolback transaction")
-		}
-	}()
+	tx := d.getTXFromCtx(ctx)
 
 	queryFrom := `
 UPDATE wallets
@@ -141,10 +104,6 @@ WHERE TRUE
 
 	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)
-	}
-
-	if err = tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -245,7 +204,7 @@ func (d *DataStore) GetTransactionsQuery(request models.GetWalletsRequest, walle
 	return sb.String(), args
 }
 
-func (d *DataStore) storeTxIntoTable(ctx context.Context, transaction models.Transaction, dbTx pgx.Tx) error {
+func (d *DataStore) storeTxIntoTable(ctx context.Context, transaction models.Transaction, tx transaction) error {
 	transaction.CommittedAt = time.Now()
 
 	query := `
@@ -262,7 +221,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)`
 		transaction.CommittedAt,
 	}
 
-	if _, err := dbTx.Exec(ctx, query, args...); err != nil {
+	if _, err := tx.Exec(ctx, query, args...); err != nil {
 		return fmt.Errorf("failed to save transaction history in database: %w", err)
 	}
 
