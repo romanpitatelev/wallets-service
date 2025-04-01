@@ -12,10 +12,20 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/rs/zerolog/log"
 )
 
 func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
-	tx := d.getTXFromCtx(ctx)
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err = tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			log.Warn().Err(err).Msg("failed to rollback transaction")
+		}
+	}()
 
 	query := `
 	UPDATE wallets
@@ -35,6 +45,10 @@ func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction,
 	}
 
 	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
+		return fmt.Errorf("failed to store transaction into database: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)
 	}
 
