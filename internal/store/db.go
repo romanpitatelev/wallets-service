@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/rs/zerolog/log"
@@ -153,16 +152,10 @@ func (d *DataStore) storeTx(ctx context.Context, tx pgx.Tx) context.Context {
 	return context.WithValue(ctx, ctxKey, tx)
 }
 
-type transaction interface {
-	Exec(ctx context.Context, sql string, arguments ...any) (commandTag pgconn.CommandTag, err error)
-	Query(ctx context.Context, sql string, arguments ...any) (pgx.Rows, error)
-	QueryRow(ctx context.Context, sql string, arguments ...any) pgx.Row
-}
-
-func (d *DataStore) getTXFromCtx(ctx context.Context) transaction {
+func (d *DataStore) getTXFromCtx(ctx context.Context) pgx.Tx {
 	tx, ok := ctx.Value(ctxKey).(pgx.Tx)
 	if !ok {
-		return d.pool
+		return nil
 	}
 
 	return tx
