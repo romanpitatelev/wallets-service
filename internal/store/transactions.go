@@ -8,9 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/rs/zerolog/log"
 )
@@ -250,9 +248,9 @@ func (d *DataStore) GetTransactionsQuery(request models.GetWalletsRequest, walle
 func (d *DataStore) storeTxIntoTable(ctx context.Context, transaction models.Transaction, dbTx pgx.Tx) error {
 	transaction.CommittedAt = time.Now()
 
-	query := `INSERT INTO transactions (id, transaction_type, to_wallet_id, from_wallet_id, amount, currency, committed_at)
-				VALUES ($1, $2, $3, $4, $5, $6, $7)
-				RETURNING id`
+	query := `
+INSERT INTO transactions (id, transaction_type, to_wallet_id, from_wallet_id, amount, currency, committed_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	args := []any{
 		uuid.New(),
@@ -264,14 +262,7 @@ func (d *DataStore) storeTxIntoTable(ctx context.Context, transaction models.Tra
 		transaction.CommittedAt,
 	}
 
-	err := dbTx.QueryRow(ctx, query, args...).Scan(&transaction.ID)
-	if err != nil {
-		var pgErr *pgconn.PgError
-
-		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation {
-			return models.ErrWalletNotFound
-		}
-
+	if _, err := dbTx.Exec(ctx, query, args...); err != nil {
 		return fmt.Errorf("failed to save transaction history in database: %w", err)
 	}
 
