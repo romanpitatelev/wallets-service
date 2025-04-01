@@ -55,9 +55,9 @@ func (s *Server) createWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	createdWallet, err := s.service.CreateWallet(r.Context(), wallet, userInfo.UserID)
+	createdWallet, err := s.service.CreateWallet(ctx, wallet, userInfo.UserID)
 	if err != nil {
-		http.Error(w, "error", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return
 	}
@@ -97,7 +97,7 @@ func (s *Server) getWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wallet, err := s.service.GetWallet(r.Context(), walletID, userInfo.UserID)
+	wallet, err := s.service.GetWallet(ctx, walletID, userInfo.UserID)
 	if err != nil {
 		if errors.Is(err, models.ErrWalletNotFound) {
 			http.Error(w, "wallet not found", http.StatusNotFound)
@@ -105,7 +105,7 @@ func (s *Server) getWallet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Error(w, "failed to get wallet", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return
 	}
@@ -141,7 +141,7 @@ func (s *Server) updateWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedWallet, err := s.service.UpdateWallet(r.Context(), walletID, updatedDecodedWallet, userInfo.UserID)
+	updatedWallet, err := s.service.UpdateWallet(ctx, walletID, updatedDecodedWallet, userInfo.UserID)
 
 	switch {
 	case errors.Is(err, models.ErrWalletNotFound):
@@ -153,7 +153,7 @@ func (s *Server) updateWallet(w http.ResponseWriter, r *http.Request) {
 
 		return
 	case err != nil:
-		http.Error(w, "failed to update wallet", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return
 	}
@@ -181,7 +181,7 @@ func (s *Server) deleteWallet(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
 
-	err = s.service.DeleteWallet(r.Context(), walletID, userInfo.UserID)
+	err = s.service.DeleteWallet(ctx, walletID, userInfo.UserID)
 
 	switch {
 	case errors.Is(err, models.ErrWalletNotFound):
@@ -193,7 +193,7 @@ func (s *Server) deleteWallet(w http.ResponseWriter, r *http.Request) {
 
 		return
 	case err != nil:
-		http.Error(w, "error deleting wallet", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return
 	}
@@ -283,7 +283,7 @@ func (s *Server) deposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.service.Deposit(r.Context(), transaction, userInfo.UserID); err != nil {
+	if err := s.service.Deposit(ctx, transaction, userInfo.UserID); err != nil {
 		switch {
 		case errors.Is(err, models.ErrWalletNotFound):
 			http.Error(w, "wallet not found", http.StatusNotFound)
@@ -294,7 +294,7 @@ func (s *Server) deposit(w http.ResponseWriter, r *http.Request) {
 
 			return
 		default:
-			http.Error(w, "error depositing funds", http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 			return
 		}
@@ -328,7 +328,7 @@ func (s *Server) withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.service.Withdraw(r.Context(), transaction, userInfo.UserID); err != nil {
+	if err := s.service.Withdraw(ctx, transaction, userInfo.UserID); err != nil {
 		switch {
 		case errors.Is(err, models.ErrWalletNotFound):
 			http.Error(w, "wallet not found", http.StatusNotFound)
@@ -339,11 +339,11 @@ func (s *Server) withdraw(w http.ResponseWriter, r *http.Request) {
 
 			return
 		case errors.Is(err, models.ErrInsufficientFunds):
-			http.Error(w, "insufficient funds", http.StatusBadRequest)
+			http.Error(w, "insufficient funds", http.StatusConflict)
 
 			return
 		default:
-			http.Error(w, "error withdrawing funds", http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 			return
 		}
@@ -372,7 +372,7 @@ func (s *Server) transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.service.Transfer(r.Context(), transaction, userInfo.UserID); err != nil {
+	if err := s.service.Transfer(ctx, transaction, userInfo.UserID); err != nil {
 		switch {
 		case errors.Is(err, models.ErrWalletNotFound):
 			http.Error(w, "wallet not found", http.StatusNotFound)
@@ -383,11 +383,11 @@ func (s *Server) transfer(w http.ResponseWriter, r *http.Request) {
 
 			return
 		case errors.Is(err, models.ErrInsufficientFunds):
-			http.Error(w, "invalid currency", http.StatusBadRequest)
+			http.Error(w, "insufficient funds", http.StatusConflict)
 
 			return
 		default:
-			http.Error(w, "error withdrawing funds", http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 			return
 		}
