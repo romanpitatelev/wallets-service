@@ -25,7 +25,7 @@ type walletStore interface {
 	Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
 	Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
 	Transfer(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
-	GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID) ([]models.Transaction, error)
+	GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID, userID uuid.UUID) ([]models.Transaction, error)
 }
 
 type xrClient interface {
@@ -170,7 +170,7 @@ func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, u
 
 		rate := defaultRate
 
-		if dbWallet.Currency != strings.ToUpper(transaction.Currency) {
+		if !strings.EqualFold(dbWallet.Currency, transaction.Currency) {
 			rate, err = s.xrClient.GetRate(ctx, transaction.Currency, dbWallet.Currency)
 
 			log.Debug().Msgf("exchange rate for transaction: %v", rate)
@@ -183,13 +183,13 @@ func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, u
 			return fmt.Errorf("failed deposit: %w", err)
 		}
 
-		if err := s.producer.ProduceTxToKafka(transaction); err != nil {
-			return fmt.Errorf("failed to produce deposit transaction: %w", err)
-		}
-
 		return nil
 	}); err != nil {
 		return fmt.Errorf("error in DoWithTX(): %w", err)
+	}
+
+	if err := s.producer.ProduceTxToKafka(transaction); err != nil {
+		return fmt.Errorf("failed to produce deposit transaction: %w", err)
 	}
 
 	return nil
@@ -204,7 +204,7 @@ func (s *Service) Withdraw(ctx context.Context, transaction models.Transaction, 
 
 		rate := defaultRate
 
-		if dbWallet.Currency != strings.ToUpper(transaction.Currency) {
+		if !strings.EqualFold(dbWallet.Currency, transaction.Currency) {
 			rate, err = s.xrClient.GetRate(ctx, transaction.Currency, dbWallet.Currency)
 			if err != nil {
 				return fmt.Errorf("failed to obtain exchange rate: %w", err)
@@ -243,7 +243,7 @@ func (s *Service) Transfer(ctx context.Context, transaction models.Transaction, 
 			return fmt.Errorf("wallet not found: %w", err)
 		}
 
-		if strings.ToUpper(transaction.Currency) != dbFromTransferWallet.Currency {
+		if !strings.EqualFold(transaction.Currency, dbFromTransferWallet.Currency) {
 			return models.ErrWrongCurrency
 		}
 
@@ -279,12 +279,7 @@ func (s *Service) Transfer(ctx context.Context, transaction models.Transaction, 
 }
 
 func (s *Service) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID, userID uuid.UUID) ([]models.Transaction, error) {
-	_, err := s.GetWallet(ctx, walletID, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract wallet: %w", err)
-	}
-
-	transactions, err := s.walletStore.GetTransactions(ctx, request, walletID)
+	transactions, err := s.walletStore.GetTransactions(ctx, request, walletID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting all the transactions info: %w", err)
 	}

@@ -40,8 +40,6 @@ func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction,
 		return models.ErrWalletNotFound
 	}
 
-	transaction.Type = "deposit"
-
 	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)
 	}
@@ -77,8 +75,6 @@ func (d *DataStore) Withdraw(ctx context.Context, transaction models.Transaction
 	if result.RowsAffected() == 0 {
 		return models.ErrWalletNotFound
 	}
-
-	transaction.Type = "withdrawal"
 
 	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)
@@ -129,8 +125,6 @@ func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction
 		return models.ErrWalletNotFound
 	}
 
-	transaction.Type = "transfer"
-
 	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)
 	}
@@ -142,11 +136,15 @@ func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction
 	return nil
 }
 
-func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID) ([]models.Transaction, error) {
+func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID, userID uuid.UUID) ([]models.Transaction, error) {
+	_, err := d.GetWallet(ctx, walletID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract wallet: %w", err)
+	}
+
 	var (
 		transactionsAll []models.Transaction
 		rows            pgx.Rows
-		err             error
 	)
 
 	query, args := d.GetTransactionsQuery(request, walletID)

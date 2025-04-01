@@ -279,12 +279,6 @@ func (s *Server) deposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if transaction.ToWalletID == uuid.Nil || transaction.FromWalletID != uuid.Nil {
-		http.Error(w, "transaction validation error", http.StatusBadRequest)
-
-		return
-	}
-
 	if err := s.service.Deposit(ctx, transaction, userInfo.UserID); err != nil {
 		switch {
 		case errors.Is(err, models.ErrWalletNotFound):
@@ -326,12 +320,6 @@ func (s *Server) withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if transaction.ToWalletID != uuid.Nil || transaction.FromWalletID == uuid.Nil {
-		http.Error(w, "transaction validation error", http.StatusBadRequest)
-
-		return
-	}
-
 	if err := s.service.Withdraw(ctx, transaction, userInfo.UserID); err != nil {
 		switch {
 		case errors.Is(err, models.ErrWalletNotFound):
@@ -367,12 +355,6 @@ func (s *Server) transfer(w http.ResponseWriter, r *http.Request) {
 	userInfo := s.getUserInfo(ctx)
 
 	if err := transaction.Validate(); err != nil {
-		http.Error(w, "transaction validation error", http.StatusBadRequest)
-
-		return
-	}
-
-	if transaction.ToWalletID == uuid.Nil || transaction.FromWalletID == uuid.Nil {
 		http.Error(w, "transaction validation error", http.StatusBadRequest)
 
 		return
