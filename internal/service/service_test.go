@@ -16,8 +16,8 @@ import (
 //nolint:funlen
 func TestDeposit(t *testing.T) {
 	ctx := context.Background()
-	userID := uuid.New()
-	walletID := uuid.New()
+	userID := models.UserID(uuid.New())
+	walletID := models.WalletID(uuid.New())
 	now := time.Now()
 
 	tests := []struct {
@@ -158,8 +158,8 @@ func TestWithdraw(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	userID := uuid.New()
-	walletID := uuid.New()
+	userID := models.UserID(uuid.New())
+	walletID := models.WalletID(uuid.New())
 	now := time.Now()
 
 	tests := []struct {
@@ -357,9 +357,9 @@ func TestWithdraw(t *testing.T) {
 //nolint:funlen,maintidx
 func TestTransfer(t *testing.T) {
 	ctx := context.Background()
-	userID := uuid.New()
-	fromWalletID := uuid.New()
-	toWalletID := uuid.New()
+	userID := models.UserID(uuid.New())
+	fromWalletID := models.WalletID(uuid.New())
+	toWalletID := models.WalletID(uuid.New())
 	now := time.Now()
 
 	tests := []struct {

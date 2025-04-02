@@ -23,13 +23,13 @@ type Currency struct {
 
 //nolint:gochecknoglobals
 var existingUser = models.User{
-	UserID: uuid.New(),
+	UserID: models.UserID(uuid.New()),
 }
 
 func (s *IntegrationTestSuite) TestCreateWallet() {
 	wallet := models.Wallet{
-		WalletID:   uuid.New(),
-		UserID:     uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
+		UserID:     models.UserID(uuid.New()),
 		WalletName: "testWalletPost",
 		Currency:   "RSD",
 	}
@@ -60,7 +60,7 @@ func (s *IntegrationTestSuite) TestCreateWallet() {
 		s.Require().NoError(err)
 
 		otherUser := models.User{
-			UserID: uuid.New(),
+			UserID: models.UserID(uuid.New()),
 		}
 
 		err = s.db.UpsertUser(context.Background(), otherUser)
@@ -74,7 +74,7 @@ func (s *IntegrationTestSuite) TestCreateWallet() {
 
 func (s *IntegrationTestSuite) TestGetWallet() {
 	wallet := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "testWalletGet",
 		Balance:    200.0,
@@ -90,17 +90,17 @@ func (s *IntegrationTestSuite) TestGetWallet() {
 
 	s.Run("user not found", func() {
 		nonExistentUser := models.User{
-			UserID: uuid.New(),
+			UserID: models.UserID(uuid.New()),
 		}
 
-		uuidString := wallet.WalletID.String()
+		uuidString := uuid.UUID(wallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusNotFound, nil, nil, nonExistentUser)
 	})
 
 	s.Run("get wallet successful", func() {
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdWallet, existingUser)
@@ -121,13 +121,13 @@ func (s *IntegrationTestSuite) TestGetWallet() {
 
 	s.Run("wallet does not belong to the user", func() {
 		otherUser := models.User{
-			UserID: uuid.New(),
+			UserID: models.UserID(uuid.New()),
 		}
 
 		err := s.db.UpsertUser(context.Background(), otherUser)
 		s.Require().NoError(err)
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusNotFound, nil, nil, otherUser)
@@ -136,7 +136,7 @@ func (s *IntegrationTestSuite) TestGetWallet() {
 
 func (s *IntegrationTestSuite) TestUpdateWallet() {
 	wallet := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		WalletName: "testWalletUpdate",
 		Balance:    300.0,
 		Currency:   "RUB",
@@ -157,10 +157,10 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 
 	s.Run("user not found", func() {
 		nonExistentUser := models.User{
-			UserID: uuid.New(),
+			UserID: models.UserID(uuid.New()),
 		}
 
-		uuidString := wallet.WalletID.String()
+		uuidString := uuid.UUID(wallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusNotFound, &wallet, nil, nonExistentUser)
@@ -180,7 +180,7 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 			Currency:   createdWallet.Currency,
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &createdWallet, existingUser)
@@ -200,7 +200,7 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 			Currency:   cny.Name,
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &createdWallet, existingUser)
@@ -222,7 +222,7 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 			Currency:   rsd.Name,
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &createdWallet, existingUser)
@@ -242,7 +242,7 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 			Currency:   "NIO",
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusUnprocessableEntity, &updatedWallet, nil, existingUser)
@@ -255,7 +255,7 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 			Currency:   createdWallet.Currency,
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusOK, &updatedWallet, &createdWallet, existingUser)
@@ -266,20 +266,20 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 
 	s.Run("wallet belongs to another user", func() {
 		otherUser := models.User{
-			UserID: uuid.New(),
+			UserID: models.UserID(uuid.New()),
 		}
 
 		err := s.db.UpsertUser(context.Background(), otherUser)
 		s.Require().NoError(err)
 
 		updatedWallet := models.Wallet{
-			WalletID:   uuid.New(),
+			WalletID:   models.WalletID(uuid.New()),
 			UserID:     otherUser.UserID,
 			WalletName: "updatedWallet",
 			Currency:   "CHF",
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodPatch, walletIDPath, http.StatusNotFound, &updatedWallet, nil, otherUser)
@@ -288,8 +288,8 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 
 func (s *IntegrationTestSuite) TestDeleteWallet() {
 	wallet := models.Wallet{
-		WalletID:   uuid.New(),
-		UserID:     uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
+		UserID:     models.UserID(uuid.New()),
 		WalletName: "testWalletDelete",
 		Balance:    0.0,
 		Currency:   "RUB",
@@ -307,17 +307,17 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 
 	s.Run("user not found", func() {
 		nonExistentUser := models.User{
-			UserID: uuid.New(),
+			UserID: models.UserID(uuid.New()),
 		}
 
-		uuidString := wallet.WalletID.String()
+		uuidString := uuid.UUID(wallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNotFound, &wallet, nil, nonExistentUser)
 	})
 
 	s.Run("wallet deletion completed successfully", func() {
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNoContent, nil, nil, existingUser)
@@ -332,7 +332,7 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 
 	s.Run("balance is non-zero", func() {
 		walletNonZero := models.Wallet{
-			WalletID:   uuid.New(),
+			WalletID:   models.WalletID(uuid.New()),
 			WalletName: "testDeleteNonZeroBalanceWallet",
 			Balance:    0.0,
 			Currency:   "USD",
@@ -352,7 +352,7 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 			259.0, createdWalletNonZero.WalletID)
 		s.Require().NoError(err)
 
-		uuidString := createdWalletNonZero.WalletID.String()
+		uuidString := uuid.UUID(createdWalletNonZero.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusBadRequest, nil, nil, existingUser)
@@ -367,13 +367,13 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 
 	s.Run("wallet belongs to another user", func() {
 		otherUser := models.User{
-			UserID: uuid.New(),
+			UserID: models.UserID(uuid.New()),
 		}
 
 		err := s.db.UpsertUser(context.Background(), otherUser)
 		s.Require().NoError(err)
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNotFound, nil, nil, otherUser)
@@ -390,7 +390,7 @@ func (s *IntegrationTestSuite) TestGetWallets() {
 	var arrWallets []models.Wallet
 
 	walletOne := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "FirstWallet",
 		Currency:   "RUB",
@@ -398,7 +398,7 @@ func (s *IntegrationTestSuite) TestGetWallets() {
 	arrWallets = append(arrWallets, walletOne)
 
 	walletTwo := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "SecondWallet",
 		Currency:   "TRY",
@@ -406,7 +406,7 @@ func (s *IntegrationTestSuite) TestGetWallets() {
 	arrWallets = append(arrWallets, walletTwo)
 
 	walletThree := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "ThirdWallet",
 		Currency:   "CNY",
@@ -414,7 +414,7 @@ func (s *IntegrationTestSuite) TestGetWallets() {
 	arrWallets = append(arrWallets, walletThree)
 
 	walletFour := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "FourthWallet",
 		Currency:   "HUF",
@@ -422,7 +422,7 @@ func (s *IntegrationTestSuite) TestGetWallets() {
 	arrWallets = append(arrWallets, walletFour)
 
 	walletFive := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "FifthWallet",
 		Currency:   "KZT",
@@ -511,7 +511,7 @@ func (s *IntegrationTestSuite) TestGetWallets() {
 
 	s.Run("user does not own any wallets", func() {
 		otherUser := models.User{
-			UserID: uuid.New(),
+			UserID: models.UserID(uuid.New()),
 		}
 
 		err := s.db.UpsertUser(context.Background(), otherUser)

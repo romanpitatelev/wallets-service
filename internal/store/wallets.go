@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet, userID uuid.UUID) (models.Wallet, error) {
+func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet, userID models.UserID) (models.Wallet, error) {
 	query := `
 INSERT INTO wallets (wallet_id, user_id, wallet_name, currency)
 VALUES ($1, $2, $3, $4)
@@ -51,7 +51,7 @@ type querier interface {
 }
 
 //nolint:ineffassign,wastedassign
-func (d *DataStore) GetWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) (models.Wallet, error) {
+func (d *DataStore) GetWallet(ctx context.Context, walletID models.WalletID, userID models.UserID) (models.Wallet, error) {
 	var wallet models.Wallet
 
 	query := `
@@ -94,7 +94,7 @@ WHERE TRUE
 }
 
 //nolint:lll
-func (d *DataStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoWallet models.WalletUpdate, rate float64, userID uuid.UUID) (models.Wallet, error) {
+func (d *DataStore) UpdateWallet(ctx context.Context, walletID models.WalletID, newInfoWallet models.WalletUpdate, rate float64, userID models.UserID) (models.Wallet, error) {
 	query := `
 UPDATE wallets
 SET wallet_name = $1, currency = $2, balance = $3 * balance, updated_at = $4
@@ -139,7 +139,7 @@ RETURNING wallet_id, user_id, wallet_name, balance, currency, created_at, update
 	return wallet, nil
 }
 
-func (d *DataStore) DeleteWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) error {
+func (d *DataStore) DeleteWallet(ctx context.Context, walletID models.WalletID, userID models.UserID) error {
 	currentWallet, err := d.GetWallet(ctx, walletID, userID)
 	if err != nil {
 		if errors.Is(err, models.ErrWalletNotFound) {
@@ -164,13 +164,13 @@ WHERE TRUE
 
 	_, err = d.pool.Exec(ctx, query, walletID, userID)
 	if err != nil {
-		return fmt.Errorf("error deleting wallet %s: %w", walletID.String(), err)
+		return fmt.Errorf("error deleting wallet %s: %w", uuid.UUID(walletID).String(), err)
 	}
 
 	return nil
 }
 
-func (d *DataStore) GetWallets(ctx context.Context, request models.GetWalletsRequest, userID uuid.UUID) ([]models.Wallet, error) {
+func (d *DataStore) GetWallets(ctx context.Context, request models.GetWalletsRequest, userID models.UserID) ([]models.Wallet, error) {
 	var (
 		walletsAll []models.Wallet
 		rows       pgx.Rows
@@ -216,7 +216,7 @@ func (d *DataStore) GetWallets(ctx context.Context, request models.GetWalletsReq
 	return walletsAll, nil
 }
 
-func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest, userID uuid.UUID) (string, []any) {
+func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest, userID models.UserID) (string, []any) {
 	var (
 		sb              strings.Builder
 		args            []any

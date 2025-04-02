@@ -15,7 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
+func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
 	tx := d.getTXFromCtx(ctx)
 
 	query := `
@@ -42,7 +42,7 @@ WHERE TRUE
 	return nil
 }
 
-func (d *DataStore) Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
+func (d *DataStore) Withdraw(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
 	tx := d.getTXFromCtx(ctx)
 
 	query := `
@@ -69,7 +69,7 @@ WHERE TRUE
 	return nil
 }
 
-func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
+func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
 	tx := d.getTXFromCtx(ctx)
 
 	queryFrom := `
@@ -113,7 +113,8 @@ WHERE TRUE
 	return nil
 }
 
-func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID, userID uuid.UUID) ([]models.Transaction, error) {
+//nolint:lll
+func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID models.WalletID, userID models.UserID) ([]models.Transaction, error) {
 	_, err := d.GetWallet(ctx, walletID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract wallet: %w", err)
@@ -162,7 +163,7 @@ func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalle
 	return transactionsAll, nil
 }
 
-func (d *DataStore) GetTransactionsQuery(request models.GetWalletsRequest, walletID uuid.UUID) (string, []any) {
+func (d *DataStore) GetTransactionsQuery(request models.GetWalletsRequest, walletID models.WalletID) (string, []any) {
 	var (
 		sb              strings.Builder
 		args            []any
@@ -219,20 +220,20 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)`
 	args := []any{
 		uuid.New(),
 		transaction.Type,
-		uuid.Nil,
-		uuid.Nil,
+		nil,
+		nil,
 		transaction.Amount,
 		transaction.Currency,
 		transaction.CommittedAt,
 	}
 
-	if transaction.ToWalletID != uuid.Nil {
+	if transaction.ToWalletID != models.WalletID(uuid.Nil) {
 		args[2] = transaction.ToWalletID
 	}
 
 	log.Debug().Msgf("towallet id: %v", transaction.ToWalletID)
 
-	if transaction.FromWalletID != uuid.Nil {
+	if transaction.FromWalletID != models.WalletID(uuid.Nil) {
 		args[3] = transaction.FromWalletID
 	}
 
@@ -245,6 +246,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation {
 			log.Error().Err(err).Msg("wallet not found: foreign key violation")
+
 			return models.ErrWalletNotFound
 		}
 
