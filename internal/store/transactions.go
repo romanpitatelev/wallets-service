@@ -2,13 +2,17 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/rs/zerolog/log"
 )
 
 func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
@@ -206,6 +210,7 @@ func (d *DataStore) GetTransactionsQuery(request models.GetWalletsRequest, walle
 
 func (d *DataStore) storeTxIntoTable(ctx context.Context, transaction models.Transaction, tx transaction) error {
 	transaction.CommittedAt = time.Now()
+	log.Debug().Msgf("transaction: %v", transaction)
 
 	query := `
 INSERT INTO transactions (id, transaction_type, to_wallet_id, from_wallet_id, amount, currency, committed_at)
@@ -214,14 +219,35 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)`
 	args := []any{
 		uuid.New(),
 		transaction.Type,
-		transaction.ToWalletID,
-		transaction.FromWalletID,
+		uuid.Nil,
+		uuid.Nil,
 		transaction.Amount,
 		transaction.Currency,
 		transaction.CommittedAt,
 	}
 
+	if transaction.ToWalletID != uuid.Nil {
+		args[2] = transaction.ToWalletID
+	}
+
+	log.Debug().Msgf("towallet id: %v", transaction.ToWalletID)
+
+	if transaction.FromWalletID != uuid.Nil {
+		args[3] = transaction.FromWalletID
+	}
+
+	log.Debug().Msgf("fromwallet id: %v", transaction.FromWalletID)
+
+	log.Debug().Msgf("args: %v", args)
+
 	if _, err := tx.Exec(ctx, query, args...); err != nil {
+		var pgErr *pgconn.PgError
+
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation {
+			log.Error().Err(err).Msg("wallet not found: foreign key violation")
+			return models.ErrWalletNotFound
+		}
+
 		return fmt.Errorf("failed to save transaction history in database: %w", err)
 	}
 
