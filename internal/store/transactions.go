@@ -211,7 +211,6 @@ func (d *DataStore) GetTransactionsQuery(request models.GetWalletsRequest, walle
 
 func (d *DataStore) storeTxIntoTable(ctx context.Context, transaction models.Transaction, tx transaction) error {
 	transaction.CommittedAt = time.Now()
-	log.Debug().Msgf("transaction: %v", transaction)
 
 	query := `
 INSERT INTO transactions (id, transaction_type, to_wallet_id, from_wallet_id, amount, currency, committed_at)
@@ -220,8 +219,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)`
 	args := []any{
 		uuid.New(),
 		transaction.Type,
-		nil,
-		nil,
+		models.WalletID(uuid.Nil),
+		models.WalletID(uuid.Nil),
 		transaction.Amount,
 		transaction.Currency,
 		transaction.CommittedAt,
@@ -231,15 +230,9 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)`
 		args[2] = transaction.ToWalletID
 	}
 
-	log.Debug().Msgf("towallet id: %v", transaction.ToWalletID)
-
 	if transaction.FromWalletID != models.WalletID(uuid.Nil) {
 		args[3] = transaction.FromWalletID
 	}
-
-	log.Debug().Msgf("fromwallet id: %v", transaction.FromWalletID)
-
-	log.Debug().Msgf("args: %v", args)
 
 	if _, err := tx.Exec(ctx, query, args...); err != nil {
 		var pgErr *pgconn.PgError
