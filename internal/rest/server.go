@@ -39,19 +39,22 @@ func New(conf Config, service service, key *rsa.PublicKey) *Server {
 		key:  key,
 	}
 
-	router.Route("/api/v1", func(r chi.Router) {
-		r.Use(middleware.Recoverer)
-		r.Use(s.jwtAuth)
+	router.Route("/api", func(r chi.Router) {
+		
+		router.Route("/v1", func(r chi.Router) {
+			r.Use(middleware.Recoverer)
+			r.Use(s.jwtAuth)
 
-		r.Post("/wallets", s.createWallet)
-		r.Get("/wallets/{walletId}", s.getWallet)
-		r.Patch("/wallets/{walletId}", s.updateWallet)
-		r.Delete("/wallets/{walletId}", s.deleteWallet)
-		r.Get("/wallets", s.getWallets)
-		r.Put("/wallets/{walletId}/deposit", s.deposit)
-		r.Put("/wallets/{walletId}/withdrawal", s.withdraw)
-		r.Put("/wallets/{walletId}/transfer", s.transfer)
-		r.Get("/wallets/{walletId}/transactions", s.getTransactions)
+			r.Post("/wallets", s.createWallet)
+			r.Get("/wallets/{walletId}", s.getWallet)
+			r.Patch("/wallets/{walletId}", s.updateWallet)
+			r.Delete("/wallets/{walletId}", s.deleteWallet)
+			r.Get("/wallets", s.getWallets)
+			r.Put("/wallets/{walletId}/deposit", s.deposit)
+			r.Put("/wallets/{walletId}/withdrawal", s.withdraw)
+			r.Put("/wallets/{walletId}/transfer", s.transfer)
+			r.Get("/wallets/{walletId}/transactions", s.getTransactions)
+		})
 	})
 
 	return s

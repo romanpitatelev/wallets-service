@@ -19,8 +19,9 @@ import (
 var migrations embed.FS
 
 type DataStore struct {
-	pool *pgxpool.Pool
-	dsn  string
+	pool    *pgxpool.Pool
+	dsn     string
+	metrics *metrics
 }
 
 type Config struct {
@@ -40,8 +41,9 @@ func New(ctx context.Context, conf Config) (*DataStore, error) {
 	log.Info().Msg("connected to database")
 
 	return &DataStore{
-		pool: pool,
-		dsn:  conf.Dsn,
+		pool:    pool,
+		dsn:     conf.Dsn,
+		metrics: newMetrics(),
 	}, nil
 }
 

@@ -106,7 +106,10 @@ RETURNING wallet_id, user_id, wallet_name, balance, currency, created_at, update
 
 	updatedAt := time.Now()
 
-	row := d.pool.QueryRow(ctx, query,
+	// TODO review and rework
+	tx := d.getTXFromCtx(ctx)
+
+	row := tx.QueryRow(ctx, query,
 		newInfoWallet.WalletName,
 		strings.ToUpper(newInfoWallet.Currency),
 		rate,
@@ -262,7 +265,14 @@ func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest, userID mod
 	return sb.String(), args
 }
 
-func (d *DataStore) DoWithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+// TODO move to db.go
+
+func (d *DataStore) DoWithTx(ctx context.Context, txName string, fn func(ctx context.Context) error) error {
+	started := time.Now()
+	defer func() {
+		d.metrics.dbResponseDuration.WithLabelValues(txName).Observe(time.Since(started).Seconds())
+	}()
+
 	tx, err := d.pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
