@@ -18,15 +18,15 @@ const (
 )
 
 type service interface {
-	CreateWallet(ctx context.Context, wallet models.Wallet, userID uuid.UUID) (models.Wallet, error)
-	GetWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) (models.Wallet, error)
-	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate, userID uuid.UUID) (models.Wallet, error)
-	DeleteWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) error
-	GetAllWallets(ctx context.Context, request models.GetWalletsRequest, userID uuid.UUID) ([]models.Wallet, error)
-	Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error
-	Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error
-	Transfer(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error
-	GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID, userID uuid.UUID) ([]models.Transaction, error)
+	CreateWallet(ctx context.Context, wallet models.Wallet, userID models.UserID) (models.Wallet, error)
+	GetWallet(ctx context.Context, walletID models.WalletID, userID models.UserID) (models.Wallet, error)
+	UpdateWallet(ctx context.Context, walletID models.WalletID, updatedWallet models.WalletUpdate, userID models.UserID) (models.Wallet, error)
+	DeleteWallet(ctx context.Context, walletID models.WalletID, userID models.UserID) error
+	GetAllWallets(ctx context.Context, request models.GetWalletsRequest, userID models.UserID) ([]models.Wallet, error)
+	Deposit(ctx context.Context, transaction models.Transaction, userID models.UserID) error
+	Withdraw(ctx context.Context, transaction models.Transaction, userID models.UserID) error
+	Transfer(ctx context.Context, transaction models.Transaction, userID models.UserID) error
+	GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID models.WalletID, userID models.UserID) ([]models.Transaction, error)
 }
 
 func (s *Server) createWallet(w http.ResponseWriter, r *http.Request) {
@@ -91,13 +91,13 @@ func (s *Server) getWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if userInfo.UserID == uuid.Nil {
+	if userInfo.UserID == models.UserID(uuid.Nil) {
 		http.Error(w, "userID empty", http.StatusBadRequest)
 
 		return
 	}
 
-	wallet, err := s.service.GetWallet(ctx, walletID, userInfo.UserID)
+	wallet, err := s.service.GetWallet(ctx, models.WalletID(walletID), userInfo.UserID)
 	if err != nil {
 		if errors.Is(err, models.ErrWalletNotFound) {
 			http.Error(w, "wallet not found", http.StatusNotFound)
@@ -141,7 +141,7 @@ func (s *Server) updateWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedWallet, err := s.service.UpdateWallet(ctx, walletID, updatedDecodedWallet, userInfo.UserID)
+	updatedWallet, err := s.service.UpdateWallet(ctx, models.WalletID(walletID), updatedDecodedWallet, userInfo.UserID)
 
 	switch {
 	case errors.Is(err, models.ErrWalletNotFound):
@@ -181,7 +181,7 @@ func (s *Server) deleteWallet(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
 
-	err = s.service.DeleteWallet(ctx, walletID, userInfo.UserID)
+	err = s.service.DeleteWallet(ctx, models.WalletID(walletID), userInfo.UserID)
 
 	switch {
 	case errors.Is(err, models.ErrWalletNotFound):
@@ -396,9 +396,9 @@ func (s *Server) getTransactions(w http.ResponseWriter, r *http.Request) {
 
 	userInfo := s.getUserInfo(ctx)
 
-	transactions, err := s.service.GetTransactions(ctx, request, walletID, userInfo.UserID)
+	transactions, err := s.service.GetTransactions(ctx, request, models.WalletID(walletID), userInfo.UserID)
 	if err != nil {
-		http.Error(w, "failed to obtain transactions", http.StatusNotFound)
+		http.Error(w, "failed to obrain transactions", http.StatusNotFound)
 
 		return
 	}

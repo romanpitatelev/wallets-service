@@ -10,7 +10,6 @@ import (
 	time "time"
 
 	gomock "github.com/golang/mock/gomock"
-	uuid "github.com/google/uuid"
 	models "github.com/romanpitatelev/wallets-service/internal/models"
 )
 
@@ -52,7 +51,7 @@ func (mr *MockwalletStoreMockRecorder) ArchiveStaleWallets(ctx, checkPeriod inte
 }
 
 // CreateWallet mocks base method.
-func (m *MockwalletStore) CreateWallet(ctx context.Context, wallet models.Wallet, userID uuid.UUID) (models.Wallet, error) {
+func (m *MockwalletStore) CreateWallet(ctx context.Context, wallet models.Wallet, userID models.UserID) (models.Wallet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateWallet", ctx, wallet, userID)
 	ret0, _ := ret[0].(models.Wallet)
@@ -67,7 +66,7 @@ func (mr *MockwalletStoreMockRecorder) CreateWallet(ctx, wallet, userID interfac
 }
 
 // DeleteWallet mocks base method.
-func (m *MockwalletStore) DeleteWallet(ctx context.Context, walletID, userID uuid.UUID) error {
+func (m *MockwalletStore) DeleteWallet(ctx context.Context, walletID models.WalletID, userID models.UserID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteWallet", ctx, walletID, userID)
 	ret0, _ := ret[0].(error)
@@ -81,7 +80,7 @@ func (mr *MockwalletStoreMockRecorder) DeleteWallet(ctx, walletID, userID interf
 }
 
 // Deposit mocks base method.
-func (m *MockwalletStore) Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
+func (m *MockwalletStore) Deposit(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Deposit", ctx, transaction, userID, rate)
 	ret0, _ := ret[0].(error)
@@ -109,7 +108,7 @@ func (mr *MockwalletStoreMockRecorder) DoWithTx(ctx, fn interface{}) *gomock.Cal
 }
 
 // GetTransactions mocks base method.
-func (m *MockwalletStore) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID, userID uuid.UUID) ([]models.Transaction, error) {
+func (m *MockwalletStore) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID models.WalletID, userID models.UserID) ([]models.Transaction, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTransactions", ctx, request, walletID, userID)
 	ret0, _ := ret[0].([]models.Transaction)
@@ -124,7 +123,7 @@ func (mr *MockwalletStoreMockRecorder) GetTransactions(ctx, request, walletID, u
 }
 
 // GetWallet mocks base method.
-func (m *MockwalletStore) GetWallet(ctx context.Context, walletID, userID uuid.UUID) (models.Wallet, error) {
+func (m *MockwalletStore) GetWallet(ctx context.Context, walletID models.WalletID, userID models.UserID) (models.Wallet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetWallet", ctx, walletID, userID)
 	ret0, _ := ret[0].(models.Wallet)
@@ -139,7 +138,7 @@ func (mr *MockwalletStoreMockRecorder) GetWallet(ctx, walletID, userID interface
 }
 
 // GetWallets mocks base method.
-func (m *MockwalletStore) GetWallets(ctx context.Context, request models.GetWalletsRequest, userID uuid.UUID) ([]models.Wallet, error) {
+func (m *MockwalletStore) GetWallets(ctx context.Context, request models.GetWalletsRequest, userID models.UserID) ([]models.Wallet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetWallets", ctx, request, userID)
 	ret0, _ := ret[0].([]models.Wallet)
@@ -154,7 +153,7 @@ func (mr *MockwalletStoreMockRecorder) GetWallets(ctx, request, userID interface
 }
 
 // Transfer mocks base method.
-func (m *MockwalletStore) Transfer(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
+func (m *MockwalletStore) Transfer(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Transfer", ctx, transaction, userID, rate)
 	ret0, _ := ret[0].(error)
@@ -168,7 +167,7 @@ func (mr *MockwalletStoreMockRecorder) Transfer(ctx, transaction, userID, rate i
 }
 
 // UpdateWallet mocks base method.
-func (m *MockwalletStore) UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate, rate float64, userID uuid.UUID) (models.Wallet, error) {
+func (m *MockwalletStore) UpdateWallet(ctx context.Context, walletID models.WalletID, updatedWallet models.WalletUpdate, rate float64, userID models.UserID) (models.Wallet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateWallet", ctx, walletID, updatedWallet, rate, userID)
 	ret0, _ := ret[0].(models.Wallet)
@@ -183,7 +182,7 @@ func (mr *MockwalletStoreMockRecorder) UpdateWallet(ctx, walletID, updatedWallet
 }
 
 // Withdraw mocks base method.
-func (m *MockwalletStore) Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
+func (m *MockwalletStore) Withdraw(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Withdraw", ctx, transaction, userID, rate)
 	ret0, _ := ret[0].(error)

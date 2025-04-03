@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/rs/zerolog/log"
 )
@@ -15,17 +14,17 @@ const defaultRate = 1.0
 
 //nolint:interfacebloat
 type walletStore interface {
-	CreateWallet(ctx context.Context, wallet models.Wallet, userID uuid.UUID) (models.Wallet, error)
-	GetWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) (models.Wallet, error)
-	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate, rate float64, userID uuid.UUID) (models.Wallet, error)
-	DeleteWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) error
-	GetWallets(ctx context.Context, request models.GetWalletsRequest, userID uuid.UUID) ([]models.Wallet, error)
+	CreateWallet(ctx context.Context, wallet models.Wallet, userID models.UserID) (models.Wallet, error)
+	GetWallet(ctx context.Context, walletID models.WalletID, userID models.UserID) (models.Wallet, error)
+	UpdateWallet(ctx context.Context, walletID models.WalletID, updatedWallet models.WalletUpdate, rate float64, userID models.UserID) (models.Wallet, error)
+	DeleteWallet(ctx context.Context, walletID models.WalletID, userID models.UserID) error
+	GetWallets(ctx context.Context, request models.GetWalletsRequest, userID models.UserID) ([]models.Wallet, error)
 	ArchiveStaleWallets(ctx context.Context, checkPeriod time.Duration) error
 	DoWithTx(ctx context.Context, fn func(ctx context.Context) error) error
-	Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
-	Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
-	Transfer(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error
-	GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID, userID uuid.UUID) ([]models.Transaction, error)
+	Deposit(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error
+	Withdraw(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error
+	Transfer(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error
+	GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID models.WalletID, userID models.UserID) ([]models.Transaction, error)
 }
 
 type xrClient interface {
@@ -74,7 +73,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 }
 
-func (s *Service) CreateWallet(ctx context.Context, wallet models.Wallet, userID uuid.UUID) (models.Wallet, error) {
+func (s *Service) CreateWallet(ctx context.Context, wallet models.Wallet, userID models.UserID) (models.Wallet, error) {
 	wallet, err := s.walletStore.CreateWallet(ctx, wallet, userID)
 	if err != nil {
 		return models.Wallet{}, fmt.Errorf("failed to create wallet: %w", err)
@@ -90,7 +89,7 @@ func (s *Service) CreateWallet(ctx context.Context, wallet models.Wallet, userID
 	return wallet, nil
 }
 
-func (s *Service) GetWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) (models.Wallet, error) {
+func (s *Service) GetWallet(ctx context.Context, walletID models.WalletID, userID models.UserID) (models.Wallet, error) {
 	wallet, err := s.walletStore.GetWallet(ctx, walletID, userID)
 	if err != nil {
 		return models.Wallet{}, fmt.Errorf("failed to get wallet: %w", err)
@@ -99,7 +98,7 @@ func (s *Service) GetWallet(ctx context.Context, walletID uuid.UUID, userID uuid
 	return wallet, nil
 }
 
-func (s *Service) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoWallet models.WalletUpdate, userID uuid.UUID) (models.Wallet, error) {
+func (s *Service) UpdateWallet(ctx context.Context, walletID models.WalletID, newInfoWallet models.WalletUpdate, userID models.UserID) (models.Wallet, error) {
 	var updatedWallet models.Wallet
 
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
@@ -138,7 +137,7 @@ func (s *Service) UpdateWallet(ctx context.Context, walletID uuid.UUID, newInfoW
 	return updatedWallet, nil
 }
 
-func (s *Service) DeleteWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) error {
+func (s *Service) DeleteWallet(ctx context.Context, walletID models.WalletID, userID models.UserID) error {
 	if err := s.walletStore.DeleteWallet(ctx, walletID, userID); err != nil {
 		return fmt.Errorf("failed to delete: %w", err)
 	}
@@ -146,7 +145,7 @@ func (s *Service) DeleteWallet(ctx context.Context, walletID uuid.UUID, userID u
 	return nil
 }
 
-func (s *Service) GetAllWallets(ctx context.Context, request models.GetWalletsRequest, userID uuid.UUID) ([]models.Wallet, error) {
+func (s *Service) GetAllWallets(ctx context.Context, request models.GetWalletsRequest, userID models.UserID) ([]models.Wallet, error) {
 	wallets, err := s.walletStore.GetWallets(ctx, request, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting wallets info: %w", err)
@@ -155,9 +154,9 @@ func (s *Service) GetAllWallets(ctx context.Context, request models.GetWalletsRe
 	return wallets, nil
 }
 
-func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error {
+func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, userID models.UserID) error {
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
-		dbWallet, err := s.walletStore.GetWallet(ctx, transaction.ToWalletID, userID)
+		dbWallet, err := s.walletStore.GetWallet(ctx, *transaction.ToWalletID, userID)
 		if err != nil {
 			return fmt.Errorf("wallet not found: %w", err)
 		}
@@ -166,8 +165,6 @@ func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, u
 
 		if !strings.EqualFold(dbWallet.Currency, transaction.Currency) {
 			rate, err = s.xrClient.GetRate(ctx, transaction.Currency, dbWallet.Currency)
-
-			log.Debug().Msgf("exchange rate for transaction: %v", rate)
 			if err != nil {
 				return fmt.Errorf("failed to obtain exchange rate: %w", err)
 			}
@@ -177,21 +174,21 @@ func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, u
 			return fmt.Errorf("failed deposit: %w", err)
 		}
 
-		if err := s.producer.ProduceTxToKafka(transaction); err != nil {
-			return fmt.Errorf("failed to produce deposit transaction: %w", err)
-		}
-
 		return nil
 	}); err != nil {
 		return fmt.Errorf("error in DoWithTX(): %w", err)
 	}
 
+	if err := s.producer.ProduceTxToKafka(transaction); err != nil {
+		return fmt.Errorf("failed to produce deposit transaction: %w", err)
+	}
+
 	return nil
 }
 
-func (s *Service) Withdraw(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error {
+func (s *Service) Withdraw(ctx context.Context, transaction models.Transaction, userID models.UserID) error {
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
-		dbWallet, err := s.walletStore.GetWallet(ctx, transaction.FromWalletID, userID)
+		dbWallet, err := s.walletStore.GetWallet(ctx, *transaction.FromWalletID, userID)
 		if err != nil {
 			return fmt.Errorf("wallet not found: %w", err)
 		}
@@ -214,7 +211,7 @@ func (s *Service) Withdraw(ctx context.Context, transaction models.Transaction, 
 		}
 
 		if err := s.producer.ProduceTxToKafka(transaction); err != nil {
-			return fmt.Errorf("failed to produce withdraw transaction: %w", err)
+			return fmt.Errorf("failed to produce withdrawFunds transaction: %w", err)
 		}
 
 		return nil
@@ -225,14 +222,14 @@ func (s *Service) Withdraw(ctx context.Context, transaction models.Transaction, 
 	return nil
 }
 
-func (s *Service) Transfer(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error {
+func (s *Service) Transfer(ctx context.Context, transaction models.Transaction, userID models.UserID) error {
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
-		dbFromTransferWallet, err := s.walletStore.GetWallet(ctx, transaction.FromWalletID, userID)
+		dbFromTransferWallet, err := s.walletStore.GetWallet(ctx, *transaction.FromWalletID, userID)
 		if err != nil {
 			return fmt.Errorf("wallet not found: %w", err)
 		}
 
-		dbToTransferWallet, err := s.walletStore.GetWallet(ctx, transaction.ToWalletID, userID)
+		dbToTransferWallet, err := s.walletStore.GetWallet(ctx, *transaction.ToWalletID, userID)
 		if err != nil {
 			return fmt.Errorf("wallet not found: %w", err)
 		}
@@ -272,7 +269,8 @@ func (s *Service) Transfer(ctx context.Context, transaction models.Transaction, 
 	return nil
 }
 
-func (s *Service) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID, userID uuid.UUID) ([]models.Transaction, error) {
+//nolint:lll
+func (s *Service) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID models.WalletID, userID models.UserID) ([]models.Transaction, error) {
 	transactions, err := s.walletStore.GetTransactions(ctx, request, walletID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting all the transactions info: %w", err)

@@ -11,6 +11,7 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
 	"github.com/goombaio/namegenerator"
+	"github.com/romanpitatelev/wallets-service/internal/models"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,12 +30,12 @@ const (
 )
 
 type User struct {
-	UserID    uuid.UUID `json:"userid"`
-	FirstName string    `json:"firstName"`
-	LastName  string    `json:"lastName"`
-	Gender    string    `json:"gender"`
-	Age       int       `json:"age"`
-	Deleted   bool      `json:"deleted"`
+	UserID    models.UserID `json:"userid"`
+	FirstName string        `json:"firstName"`
+	LastName  string        `json:"lastName"`
+	Gender    string        `json:"gender"`
+	Age       int           `json:"age"`
+	Deleted   bool          `json:"deleted"`
 }
 
 func main() {
@@ -97,7 +98,7 @@ func generateUser() User {
 		age = defaultAge
 	}
 
-	userID := uuid.New()
+	userID := models.UserID(uuid.New())
 
 	deleted, err := randomDeleted()
 	if err != nil {
