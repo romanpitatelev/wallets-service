@@ -219,18 +219,18 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)`
 	args := []any{
 		uuid.New(),
 		transaction.Type,
-		models.WalletID(uuid.Nil),
-		models.WalletID(uuid.Nil),
+		nil,
+		nil,
 		transaction.Amount,
 		transaction.Currency,
 		transaction.CommittedAt,
 	}
 
-	if transaction.ToWalletID != models.WalletID(uuid.Nil) {
+	if transaction.ToWalletID != nil {
 		args[2] = transaction.ToWalletID
 	}
 
-	if transaction.FromWalletID != models.WalletID(uuid.Nil) {
+	if transaction.FromWalletID != nil {
 		args[3] = transaction.FromWalletID
 	}
 

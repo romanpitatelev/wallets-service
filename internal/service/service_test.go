@@ -32,7 +32,7 @@ func TestDeposit(t *testing.T) {
 		{
 			name: "successful deposit with same currency",
 			transaction: models.Transaction{
-				ToWalletID:  walletID,
+				ToWalletID:  &walletID,
 				Amount:      100.0,
 				Currency:    "USD",
 				CommittedAt: now,
@@ -62,7 +62,7 @@ func TestDeposit(t *testing.T) {
 		{
 			name: "successful deposit with different currency",
 			transaction: models.Transaction{
-				ToWalletID:  walletID,
+				ToWalletID:  &walletID,
 				Amount:      100.0,
 				Currency:    "EUR",
 				CommittedAt: now,
@@ -94,7 +94,7 @@ func TestDeposit(t *testing.T) {
 		{
 			name: "exchange rate error",
 			transaction: models.Transaction{
-				ToWalletID:  walletID,
+				ToWalletID:  &walletID,
 				Amount:      100.0,
 				Currency:    "NIO",
 				CommittedAt: now,
@@ -174,7 +174,7 @@ func TestWithdraw(t *testing.T) {
 		{
 			name: "successful withdrawal with same currency",
 			transaction: models.Transaction{
-				FromWalletID: walletID,
+				FromWalletID: &walletID,
 				Amount:       100.0,
 				Currency:     "USD",
 				CommittedAt:  now,
@@ -204,7 +204,7 @@ func TestWithdraw(t *testing.T) {
 		{
 			name: "successful withdrawal with different currency",
 			transaction: models.Transaction{
-				FromWalletID: walletID,
+				FromWalletID: &walletID,
 				Amount:       100.0,
 				Currency:     "EUR",
 				CommittedAt:  now,
@@ -236,7 +236,7 @@ func TestWithdraw(t *testing.T) {
 		{
 			name: "insufficient funds with same currency",
 			transaction: models.Transaction{
-				FromWalletID: walletID,
+				FromWalletID: &walletID,
 				Amount:       600.0,
 				Currency:     "USD",
 				CommittedAt:  now,
@@ -265,7 +265,7 @@ func TestWithdraw(t *testing.T) {
 		{
 			name: "insufficient funds with foreign currency",
 			transaction: models.Transaction{
-				FromWalletID: walletID,
+				FromWalletID: &walletID,
 				Amount:       100.0,
 				Currency:     "USD",
 				CommittedAt:  now,
@@ -295,7 +295,7 @@ func TestWithdraw(t *testing.T) {
 		{
 			name: "exchange rate error",
 			transaction: models.Transaction{
-				FromWalletID: walletID,
+				FromWalletID: &walletID,
 				Amount:       100.0,
 				Currency:     "RUS",
 				CommittedAt:  now,
@@ -375,8 +375,8 @@ func TestTransfer(t *testing.T) {
 		{
 			name: "successful transfer with same currency",
 			transaction: models.Transaction{
-				FromWalletID: fromWalletID,
-				ToWalletID:   toWalletID,
+				FromWalletID: &fromWalletID,
+				ToWalletID:   &toWalletID,
 				Amount:       100.0,
 				Currency:     "CHF",
 				CommittedAt:  now,
@@ -418,8 +418,8 @@ func TestTransfer(t *testing.T) {
 		{
 			name: "successful transfer with different currency",
 			transaction: models.Transaction{
-				FromWalletID: fromWalletID,
-				ToWalletID:   toWalletID,
+				FromWalletID: &fromWalletID,
+				ToWalletID:   &toWalletID,
 				Amount:       10.0,
 				Currency:     "USD",
 				CommittedAt:  now,
@@ -463,8 +463,8 @@ func TestTransfer(t *testing.T) {
 		{
 			name: "insufficient funds in source wallet: same currency",
 			transaction: models.Transaction{
-				FromWalletID: fromWalletID,
-				ToWalletID:   toWalletID,
+				FromWalletID: &fromWalletID,
+				ToWalletID:   &toWalletID,
 				Amount:       600.0,
 				Currency:     "CNY",
 				CommittedAt:  now,
@@ -505,8 +505,8 @@ func TestTransfer(t *testing.T) {
 		{
 			name: "insufficient funds in source wallet: same currency",
 			transaction: models.Transaction{
-				FromWalletID: fromWalletID,
-				ToWalletID:   toWalletID,
+				FromWalletID: &fromWalletID,
+				ToWalletID:   &toWalletID,
 				Amount:       600.0,
 				Currency:     "CNY",
 				CommittedAt:  now,
@@ -547,8 +547,8 @@ func TestTransfer(t *testing.T) {
 		{
 			name: "exchange rate error",
 			transaction: models.Transaction{
-				FromWalletID: fromWalletID,
-				ToWalletID:   toWalletID,
+				FromWalletID: &fromWalletID,
+				ToWalletID:   &toWalletID,
 				Amount:       100.0,
 				Currency:     "RSD",
 				CommittedAt:  now,

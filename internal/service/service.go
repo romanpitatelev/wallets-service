@@ -156,7 +156,7 @@ func (s *Service) GetAllWallets(ctx context.Context, request models.GetWalletsRe
 
 func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, userID models.UserID) error {
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
-		dbWallet, err := s.walletStore.GetWallet(ctx, transaction.ToWalletID, userID)
+		dbWallet, err := s.walletStore.GetWallet(ctx, *transaction.ToWalletID, userID)
 		if err != nil {
 			return fmt.Errorf("wallet not found: %w", err)
 		}
@@ -165,8 +165,6 @@ func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, u
 
 		if !strings.EqualFold(dbWallet.Currency, transaction.Currency) {
 			rate, err = s.xrClient.GetRate(ctx, transaction.Currency, dbWallet.Currency)
-
-			log.Debug().Msgf("exchange rate for transaction: %v", rate)
 			if err != nil {
 				return fmt.Errorf("failed to obtain exchange rate: %w", err)
 			}
@@ -190,7 +188,7 @@ func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, u
 
 func (s *Service) Withdraw(ctx context.Context, transaction models.Transaction, userID models.UserID) error {
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
-		dbWallet, err := s.walletStore.GetWallet(ctx, transaction.FromWalletID, userID)
+		dbWallet, err := s.walletStore.GetWallet(ctx, *transaction.FromWalletID, userID)
 		if err != nil {
 			return fmt.Errorf("wallet not found: %w", err)
 		}
@@ -226,12 +224,12 @@ func (s *Service) Withdraw(ctx context.Context, transaction models.Transaction, 
 
 func (s *Service) Transfer(ctx context.Context, transaction models.Transaction, userID models.UserID) error {
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
-		dbFromTransferWallet, err := s.walletStore.GetWallet(ctx, transaction.FromWalletID, userID)
+		dbFromTransferWallet, err := s.walletStore.GetWallet(ctx, *transaction.FromWalletID, userID)
 		if err != nil {
 			return fmt.Errorf("wallet not found: %w", err)
 		}
 
-		dbToTransferWallet, err := s.walletStore.GetWallet(ctx, transaction.ToWalletID, userID)
+		dbToTransferWallet, err := s.walletStore.GetWallet(ctx, *transaction.ToWalletID, userID)
 		if err != nil {
 			return fmt.Errorf("wallet not found: %w", err)
 		}

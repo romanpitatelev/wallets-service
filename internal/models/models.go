@@ -87,8 +87,8 @@ type UserInfo struct {
 type Transaction struct {
 	ID           TxID      `json:"transactionId"`
 	Type         string    `json:"type"`
-	ToWalletID   WalletID  `json:"toWalletId"`
-	FromWalletID WalletID  `json:"fromWalletId"`
+	ToWalletID   *WalletID `json:"toWalletId"`
+	FromWalletID *WalletID `json:"fromWalletId"`
 	Amount       float64   `json:"amount"`
 	Currency     string    `json:"currency"`
 	CommittedAt  time.Time `json:"committedAt"`
@@ -123,19 +123,19 @@ func (t *Transaction) Validate() error {
 		return ErrSameWallet
 	default:
 		if t.Type == "deposit" {
-			if t.ToWalletID == WalletID(uuid.Nil) || t.FromWalletID != WalletID(uuid.Nil) {
+			if t.ToWalletID == nil || t.FromWalletID != nil {
 				return ErrInvalidTransaction
 			}
 		}
 
 		if t.Type == "withdraw" {
-			if t.ToWalletID != WalletID(uuid.Nil) || t.FromWalletID == WalletID(uuid.Nil) {
+			if t.ToWalletID != nil || t.FromWalletID == nil {
 				return ErrInvalidTransaction
 			}
 		}
 
 		if t.Type == "transfer" {
-			if t.ToWalletID == WalletID(uuid.Nil) || t.FromWalletID == WalletID(uuid.Nil) {
+			if t.ToWalletID == nil || t.FromWalletID == nil {
 				return ErrInvalidTransaction
 			}
 		}

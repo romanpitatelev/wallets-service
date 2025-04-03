@@ -41,7 +41,7 @@ func (s *IntegrationTestSuite) TestDeposit() {
 	s.Run("deposit transaction successful", func() {
 		transaction := models.Transaction{
 			ID:         models.TxID(uuid.New()),
-			ToWalletID: createdWallet.WalletID,
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     900.0,
 			Currency:   "USD",
 		}
@@ -66,7 +66,7 @@ func (s *IntegrationTestSuite) TestDeposit() {
 	s.Run("deposit foreign currency successful", func() {
 		transaction := models.Transaction{
 			ID:         models.TxID(uuid.New()),
-			ToWalletID: createdWallet.WalletID,
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     500,
 			Currency:   "CHF",
 		}
@@ -98,7 +98,7 @@ func (s *IntegrationTestSuite) TestDeposit() {
 	s.Run("deposit negative amount should fail", func() {
 		transaction := models.Transaction{
 			ID:         models.TxID(uuid.New()),
-			ToWalletID: createdWallet.WalletID,
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     -100.0,
 			Currency:   "USD",
 		}
@@ -112,7 +112,7 @@ func (s *IntegrationTestSuite) TestDeposit() {
 	s.Run("unprocessable currency deposit", func() {
 		transaction := models.Transaction{
 			ID:         models.TxID(uuid.New()),
-			ToWalletID: createdWallet.WalletID,
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     200.0,
 			Currency:   "TRY",
 		}
@@ -124,14 +124,16 @@ func (s *IntegrationTestSuite) TestDeposit() {
 	})
 
 	s.Run("wallet not found", func() {
+		newWalletID := models.WalletID(uuid.New())
+
 		transaction := models.Transaction{
 			ID:         models.TxID(uuid.New()),
-			ToWalletID: models.WalletID(uuid.New()),
+			ToWalletID: &newWalletID,
 			Amount:     300.0,
 			Currency:   "EUR",
 		}
 
-		uuidString := uuid.UUID(transaction.ToWalletID).String()
+		uuidString := uuid.UUID(*transaction.ToWalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusNotFound, &transaction, nil, existingUser)
@@ -140,7 +142,7 @@ func (s *IntegrationTestSuite) TestDeposit() {
 	s.Run("wallet belongs to another user", func() {
 		transaction := models.Transaction{
 			ID:         models.TxID(uuid.New()),
-			ToWalletID: createdWallet.WalletID,
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     438.0,
 			Currency:   "CNY",
 		}
@@ -159,7 +161,7 @@ func (s *IntegrationTestSuite) TestDeposit() {
 	s.Run("wallet is not specified", func() {
 		transaction := models.Transaction{
 			ID:         models.TxID(uuid.New()),
-			ToWalletID: models.WalletID(uuid.Nil),
+			ToWalletID: nil,
 			Amount:     10100.0,
 			Currency:   "RUB",
 		}
@@ -173,7 +175,7 @@ func (s *IntegrationTestSuite) TestDeposit() {
 	s.Run("deposit zero amout failed", func() {
 		transaction := models.Transaction{
 			ID:         models.TxID(uuid.New()),
-			ToWalletID: createdWallet.WalletID,
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     0.0,
 			Currency:   "USD",
 		}
@@ -187,7 +189,7 @@ func (s *IntegrationTestSuite) TestDeposit() {
 	s.Run("user is not found in the database", func() {
 		transaction := models.Transaction{
 			ID:         models.TxID(uuid.New()),
-			ToWalletID: createdWallet.WalletID,
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     500.0,
 			Currency:   "USD",
 		}
@@ -222,7 +224,7 @@ func (s *IntegrationTestSuite) TestWithdraw() {
 
 	transaction := models.Transaction{
 		ID:         models.TxID(uuid.New()),
-		ToWalletID: createdWallet.WalletID,
+		ToWalletID: &createdWallet.WalletID,
 		Amount:     14000.0,
 		Currency:   "RUB",
 	}
@@ -240,7 +242,7 @@ func (s *IntegrationTestSuite) TestWithdraw() {
 
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			FromWalletID: createdWallet.WalletID,
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       375.0,
 			Currency:     "RUB",
 		}
@@ -270,7 +272,7 @@ func (s *IntegrationTestSuite) TestWithdraw() {
 
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			FromWalletID: createdWallet.WalletID,
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       14000.0,
 			Currency:     "RUB",
 		}
@@ -298,7 +300,7 @@ func (s *IntegrationTestSuite) TestWithdraw() {
 
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			FromWalletID: createdWallet.WalletID,
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       15.0,
 			Currency:     "CNY",
 		}
@@ -330,7 +332,7 @@ func (s *IntegrationTestSuite) TestWithdraw() {
 
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			FromWalletID: createdWallet.WalletID,
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       10000.0,
 			Currency:     "CHF",
 		}
@@ -353,7 +355,7 @@ func (s *IntegrationTestSuite) TestWithdraw() {
 	s.Run("withdraw zero amout failed", func() {
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			FromWalletID: createdWallet.WalletID,
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       0.0,
 			Currency:     "RUB",
 		}
@@ -367,7 +369,7 @@ func (s *IntegrationTestSuite) TestWithdraw() {
 	s.Run("unprocessable currency withdrawal", func() {
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			FromWalletID: createdWallet.WalletID,
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       30.0,
 			Currency:     "TRY",
 		}
@@ -381,7 +383,7 @@ func (s *IntegrationTestSuite) TestWithdraw() {
 	s.Run("wallet is not specified", func() {
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			FromWalletID: models.WalletID(uuid.Nil),
+			FromWalletID: nil,
 			Amount:       10100.0,
 			Currency:     "RUB",
 		}
@@ -393,14 +395,16 @@ func (s *IntegrationTestSuite) TestWithdraw() {
 	})
 
 	s.Run("wallet not found", func() {
+		newWalletID := models.WalletID(uuid.New())
+
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			FromWalletID: models.WalletID(uuid.New()),
+			FromWalletID: &newWalletID,
 			Amount:       300.0,
 			Currency:     "RUB",
 		}
 
-		uuidString := uuid.UUID(transaction.ToWalletID).String()
+		uuidString := uuid.UUID(*transaction.FromWalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusNotFound, &transaction, nil, existingUser)
@@ -409,7 +413,7 @@ func (s *IntegrationTestSuite) TestWithdraw() {
 	s.Run("wallet belongs to another user", func() {
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			FromWalletID: createdWallet.WalletID,
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       733.0,
 			Currency:     "RUB",
 		}
@@ -428,7 +432,7 @@ func (s *IntegrationTestSuite) TestWithdraw() {
 	s.Run("user is not found in the database", func() {
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			FromWalletID: createdWallet.WalletID,
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       4600.0,
 			Currency:     "RUB",
 		}
@@ -484,21 +488,21 @@ func (s *IntegrationTestSuite) TestTransfer() {
 
 	transactionTo := models.Transaction{
 		ID:         models.TxID(uuid.New()),
-		ToWalletID: toWallet.WalletID,
+		ToWalletID: &toWallet.WalletID,
 		Amount:     1000.0,
 		Currency:   "RUB",
 	}
 
 	transactionFrom := models.Transaction{
 		ID:         models.TxID(uuid.New()),
-		ToWalletID: fromWallet.WalletID,
+		ToWalletID: &fromWallet.WalletID,
 		Amount:     8000.0,
 		Currency:   "RUB",
 	}
 
 	transactionFromFX := models.Transaction{
 		ID:         models.TxID(uuid.New()),
-		ToWalletID: fromWalletFX.WalletID,
+		ToWalletID: &fromWalletFX.WalletID,
 		Amount:     200.0,
 		Currency:   "USD",
 	}
@@ -521,8 +525,8 @@ func (s *IntegrationTestSuite) TestTransfer() {
 	s.Run("transfer processed successfully", func() {
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWallet.WalletID,
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       500.0,
 			Currency:     "RUB",
 		}
@@ -555,8 +559,8 @@ func (s *IntegrationTestSuite) TestTransfer() {
 	s.Run("zero amount transfer", func() {
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWallet.WalletID,
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       0.0,
 			Currency:     "RUB",
 		}
@@ -570,8 +574,8 @@ func (s *IntegrationTestSuite) TestTransfer() {
 	s.Run("negative amount transfer", func() {
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWallet.WalletID,
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       -60.0,
 			Currency:     "RUB",
 		}
@@ -585,8 +589,8 @@ func (s *IntegrationTestSuite) TestTransfer() {
 	s.Run("transfer amount exceeds source wallet balance", func() {
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWallet.WalletID,
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       50000.0,
 			Currency:     "RUB",
 		}
@@ -600,8 +604,8 @@ func (s *IntegrationTestSuite) TestTransfer() {
 	s.Run("wrong currency transaction failed", func() {
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWallet.WalletID,
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       5.0,
 			Currency:     "EUR",
 		}
@@ -612,10 +616,12 @@ func (s *IntegrationTestSuite) TestTransfer() {
 	})
 
 	s.Run("target wallet not found", func() {
+		newWalletID := models.WalletID(uuid.New())
+
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			ToWalletID:   models.WalletID(uuid.New()),
-			FromWalletID: createdFromWallet.WalletID,
+			ToWalletID:   &newWalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       50.0,
 			Currency:     "RUB",
 		}
@@ -626,10 +632,12 @@ func (s *IntegrationTestSuite) TestTransfer() {
 	})
 
 	s.Run("source wallet not found", func() {
+		newWalletID := models.WalletID(uuid.New())
+
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: models.WalletID(uuid.New()),
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &newWalletID,
 			Amount:       50.0,
 			Currency:     "RUB",
 		}
@@ -642,8 +650,8 @@ func (s *IntegrationTestSuite) TestTransfer() {
 	s.Run("user does not own the source wallet", func() {
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWallet.WalletID,
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       45.0,
 			Currency:     "RUB",
 		}
@@ -674,8 +682,8 @@ func (s *IntegrationTestSuite) TestTransfer() {
 
 		transaction := models.Transaction{
 			ID:           models.TxID(uuid.New()),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWalletFX.WalletID,
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWalletFX.WalletID,
 			Amount:       40.0,
 			Currency:     "USD",
 		}
@@ -750,7 +758,7 @@ func (s *IntegrationTestSuite) TestGetTransactions() {
 
 	transactionOne := models.Transaction{
 		ID:         models.TxID(uuid.New()),
-		ToWalletID: createdOne.WalletID,
+		ToWalletID: &createdOne.WalletID,
 		Amount:     40010.0,
 		Currency:   "RUB",
 	}
@@ -762,7 +770,7 @@ func (s *IntegrationTestSuite) TestGetTransactions() {
 
 	transactionTwo := models.Transaction{
 		ID:         models.TxID(uuid.New()),
-		ToWalletID: createdTwo.WalletID,
+		ToWalletID: &createdTwo.WalletID,
 		Amount:     204.0,
 		Currency:   "USD",
 	}
@@ -774,7 +782,7 @@ func (s *IntegrationTestSuite) TestGetTransactions() {
 
 	transactionThree := models.Transaction{
 		ID:         models.TxID(uuid.New()),
-		ToWalletID: createdThree.WalletID,
+		ToWalletID: &createdThree.WalletID,
 		Amount:     3000.0,
 		Currency:   "RUB",
 	}
@@ -786,7 +794,7 @@ func (s *IntegrationTestSuite) TestGetTransactions() {
 
 	transactionFour := models.Transaction{
 		ID:           models.TxID(uuid.New()),
-		FromWalletID: createdOne.WalletID,
+		FromWalletID: &createdOne.WalletID,
 		Amount:       5000.0,
 		Currency:     "RUB",
 	}
@@ -798,8 +806,8 @@ func (s *IntegrationTestSuite) TestGetTransactions() {
 
 	transactionFive := models.Transaction{
 		ID:           models.TxID(uuid.New()),
-		ToWalletID:   createdThree.WalletID,
-		FromWalletID: createdOne.WalletID,
+		ToWalletID:   &createdThree.WalletID,
+		FromWalletID: &createdOne.WalletID,
 		Amount:       7500.0,
 		Currency:     "RUB",
 	}
