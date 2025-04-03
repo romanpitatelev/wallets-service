@@ -1,4 +1,4 @@
-package consumer
+package broker
 
 import (
 	"context"
@@ -19,7 +19,7 @@ type Consumer struct {
 	store    userStore
 }
 
-type Config struct {
+type ConsumerConfig struct {
 	Addr string
 }
 
@@ -27,7 +27,7 @@ type userStore interface {
 	UpsertUser(ctx context.Context, users models.User) error
 }
 
-func New(store userStore, conf Config) (*Consumer, error) {
+func NewConsumer(store userStore, conf ConsumerConfig) (*Consumer, error) {
 	consumer, err := sarama.NewConsumer([]string{conf.Addr}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kafka consumer in sarama.NewConsumer(): %w", err)

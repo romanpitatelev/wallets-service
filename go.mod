@@ -6,6 +6,7 @@ require (
 	github.com/IBM/sarama v1.45.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-chi/chi/v5 v5.2.1
+	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/ilyakaznacheev/cleanenv v1.5.0

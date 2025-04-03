@@ -1,4 +1,4 @@
-//nolint:testpackage
+//nolint:testpackage,dupl
 package tests
 
 import (
@@ -24,7 +24,7 @@ var exchangeRatesToRub = map[string]float64{
 
 func (s *IntegrationTestSuite) TestDeposit() {
 	wallet := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		WalletName: "testDeposit",
 		Currency:   "USD",
 	}
@@ -40,20 +40,20 @@ func (s *IntegrationTestSuite) TestDeposit() {
 
 	s.Run("deposit transaction successful", func() {
 		transaction := models.Transaction{
-			ID:         uuid.New(),
-			ToWalletID: createdWallet.WalletID,
+			ID:         models.TxID(uuid.New()),
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     900.0,
 			Currency:   "USD",
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusOK, &transaction, nil, existingUser)
 
 		var updatedWallet models.Wallet
 
-		uuidString = createdWallet.WalletID.String()
+		uuidString = uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &updatedWallet, existingUser)
@@ -65,27 +65,27 @@ func (s *IntegrationTestSuite) TestDeposit() {
 
 	s.Run("deposit foreign currency successful", func() {
 		transaction := models.Transaction{
-			ID:         uuid.New(),
-			ToWalletID: createdWallet.WalletID,
+			ID:         models.TxID(uuid.New()),
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     500,
 			Currency:   "CHF",
 		}
 
 		currency := Currency{Name: transaction.Currency, Value: exchangeRatesToRub[transaction.Currency] / exchangeRatesToRub[wallet.Currency]}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdWallet, existingUser)
 
-		uuidString = createdWallet.WalletID.String()
+		uuidString = uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString + "/deposit"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusOK, &transaction, nil, existingUser)
 
 		var updatedWallet models.Wallet
 
-		uuidString = createdWallet.WalletID.String()
+		uuidString = uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &updatedWallet, existingUser)
@@ -97,13 +97,13 @@ func (s *IntegrationTestSuite) TestDeposit() {
 
 	s.Run("deposit negative amount should fail", func() {
 		transaction := models.Transaction{
-			ID:         uuid.New(),
-			ToWalletID: createdWallet.WalletID,
+			ID:         models.TxID(uuid.New()),
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     -100.0,
 			Currency:   "USD",
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusBadRequest, &transaction, nil, existingUser)
@@ -111,27 +111,29 @@ func (s *IntegrationTestSuite) TestDeposit() {
 
 	s.Run("unprocessable currency deposit", func() {
 		transaction := models.Transaction{
-			ID:         uuid.New(),
-			ToWalletID: createdWallet.WalletID,
+			ID:         models.TxID(uuid.New()),
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     200.0,
 			Currency:   "TRY",
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusUnprocessableEntity, &transaction, nil, existingUser)
 	})
 
 	s.Run("wallet not found", func() {
+		newWalletID := models.WalletID(uuid.New())
+
 		transaction := models.Transaction{
-			ID:         uuid.New(),
-			ToWalletID: uuid.New(),
+			ID:         models.TxID(uuid.New()),
+			ToWalletID: &newWalletID,
 			Amount:     300.0,
 			Currency:   "EUR",
 		}
 
-		uuidString := transaction.ToWalletID.String()
+		uuidString := uuid.UUID(*transaction.ToWalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusNotFound, &transaction, nil, existingUser)
@@ -139,18 +141,18 @@ func (s *IntegrationTestSuite) TestDeposit() {
 
 	s.Run("wallet belongs to another user", func() {
 		transaction := models.Transaction{
-			ID:         uuid.New(),
-			ToWalletID: createdWallet.WalletID,
+			ID:         models.TxID(uuid.New()),
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     438.0,
 			Currency:   "CNY",
 		}
 
-		otherUser := models.User{UserID: uuid.New()}
+		otherUser := models.User{UserID: models.UserID(uuid.New())}
 
 		err := s.db.UpsertUser(context.Background(), otherUser)
 		s.Require().NoError(err)
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusNotFound, &transaction, nil, otherUser)
@@ -158,13 +160,13 @@ func (s *IntegrationTestSuite) TestDeposit() {
 
 	s.Run("wallet is not specified", func() {
 		transaction := models.Transaction{
-			ID:         uuid.New(),
-			ToWalletID: uuid.Nil,
+			ID:         models.TxID(uuid.New()),
+			ToWalletID: nil,
 			Amount:     10100.0,
 			Currency:   "RUB",
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusBadRequest, &transaction, nil, existingUser)
@@ -172,13 +174,13 @@ func (s *IntegrationTestSuite) TestDeposit() {
 
 	s.Run("deposit zero amout failed", func() {
 		transaction := models.Transaction{
-			ID:         uuid.New(),
-			ToWalletID: createdWallet.WalletID,
+			ID:         models.TxID(uuid.New()),
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     0.0,
 			Currency:   "USD",
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusBadRequest, &transaction, nil, existingUser)
@@ -186,27 +188,27 @@ func (s *IntegrationTestSuite) TestDeposit() {
 
 	s.Run("user is not found in the database", func() {
 		transaction := models.Transaction{
-			ID:         uuid.New(),
-			ToWalletID: createdWallet.WalletID,
+			ID:         models.TxID(uuid.New()),
+			ToWalletID: &createdWallet.WalletID,
 			Amount:     500.0,
 			Currency:   "USD",
 		}
 
 		newUser := models.User{
-			UserID: uuid.New(),
+			UserID: models.UserID(uuid.New()),
 		}
 
 		createdWallet.UserID = newUser.UserID
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusNotFound, &transaction, nil, newUser)
 	})
 }
 
-func (s *IntegrationTestSuite) TestWithdrawFunds() {
+func (s *IntegrationTestSuite) TestWithdraw() {
 	wallet := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		WalletName: "testWithdrawFundsWallet",
 		Currency:   "RUB",
 	}
@@ -221,38 +223,38 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &wallet, &createdWallet, existingUser)
 
 	transaction := models.Transaction{
-		ID:         uuid.New(),
-		ToWalletID: createdWallet.WalletID,
+		ID:         models.TxID(uuid.New()),
+		ToWalletID: &createdWallet.WalletID,
 		Amount:     14000.0,
 		Currency:   "RUB",
 	}
 
-	uuidString := wallet.WalletID.String()
+	uuidString := uuid.UUID(wallet.WalletID).String()
 	walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
 	s.sendRequest(http.MethodPut, walletIDPath, http.StatusOK, &transaction, nil, existingUser)
 
-	s.Run("withdrawal in wallet currency processed succussfully", func() {
-		uuidString = createdWallet.WalletID.String()
+	s.Run("withdrawal in wallet currency processed successfully", func() {
+		uuidString = uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdWallet, existingUser)
 
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			FromWalletID: createdWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       375.0,
 			Currency:     "RUB",
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusOK, &transaction, nil, existingUser)
 
 		var updatedWallet models.Wallet
 
-		uuidString = createdWallet.WalletID.String()
+		uuidString = uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &updatedWallet, existingUser)
@@ -263,26 +265,26 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 	})
 
 	s.Run("withdrawal amount in wallet currency exceeds wallet balance", func() {
-		uuidString = createdWallet.WalletID.String()
+		uuidString = uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdWallet, existingUser)
 
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			FromWalletID: createdWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       14000.0,
 			Currency:     "RUB",
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"
 
-		s.sendRequest(http.MethodPut, walletIDPath, http.StatusBadRequest, &transaction, nil, existingUser)
+		s.sendRequest(http.MethodPut, walletIDPath, http.StatusConflict, &transaction, nil, existingUser)
 
 		var nonmodifiedWallet models.Wallet
 
-		uuidString = createdWallet.WalletID.String()
+		uuidString = uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &nonmodifiedWallet, existingUser)
@@ -290,29 +292,29 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 		s.Require().Equal(nonmodifiedWallet.Balance, createdWallet.Balance)
 	})
 
-	s.Run("withdrawal in foreign currency processed succussfully", func() {
-		uuidString = createdWallet.WalletID.String()
+	s.Run("withdrawal in foreign currency processed successfully", func() {
+		uuidString = uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdWallet, existingUser)
 
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			FromWalletID: createdWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       15.0,
 			Currency:     "CNY",
 		}
 
 		currency := Currency{Name: transaction.Currency, Value: exchangeRatesToRub[transaction.Currency] / exchangeRatesToRub[wallet.Currency]}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusOK, &transaction, nil, existingUser)
 
 		var updatedWallet models.Wallet
 
-		uuidString = createdWallet.WalletID.String()
+		uuidString = uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &updatedWallet, existingUser)
@@ -323,26 +325,26 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 	})
 
 	s.Run("withdrawal amount in foreign currency exceeds wallet balance", func() {
-		uuidString = createdWallet.WalletID.String()
+		uuidString = uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdWallet, existingUser)
 
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			FromWalletID: createdWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       10000.0,
 			Currency:     "CHF",
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"
 
-		s.sendRequest(http.MethodPut, walletIDPath, http.StatusBadRequest, &transaction, nil, existingUser)
+		s.sendRequest(http.MethodPut, walletIDPath, http.StatusConflict, &transaction, nil, existingUser)
 
 		var nonmodifiedWallet models.Wallet
 
-		uuidString = createdWallet.WalletID.String()
+		uuidString = uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &nonmodifiedWallet, existingUser)
@@ -352,13 +354,13 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 
 	s.Run("withdraw zero amout failed", func() {
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			FromWalletID: createdWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       0.0,
 			Currency:     "RUB",
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusBadRequest, &transaction, nil, existingUser)
@@ -366,13 +368,13 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 
 	s.Run("unprocessable currency withdrawal", func() {
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			FromWalletID: createdWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       30.0,
 			Currency:     "TRY",
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusUnprocessableEntity, &transaction, nil, existingUser)
@@ -380,27 +382,29 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 
 	s.Run("wallet is not specified", func() {
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			FromWalletID: uuid.Nil,
+			ID:           models.TxID(uuid.New()),
+			FromWalletID: nil,
 			Amount:       10100.0,
 			Currency:     "RUB",
 		}
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusBadRequest, &transaction, nil, existingUser)
 	})
 
 	s.Run("wallet not found", func() {
+		newWalletID := models.WalletID(uuid.New())
+
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			FromWalletID: uuid.New(),
+			ID:           models.TxID(uuid.New()),
+			FromWalletID: &newWalletID,
 			Amount:       300.0,
 			Currency:     "RUB",
 		}
 
-		uuidString := transaction.ToWalletID.String()
+		uuidString := uuid.UUID(*transaction.FromWalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusNotFound, &transaction, nil, existingUser)
@@ -408,18 +412,18 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 
 	s.Run("wallet belongs to another user", func() {
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			FromWalletID: createdWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       733.0,
 			Currency:     "RUB",
 		}
 
-		otherUser := models.User{UserID: uuid.New()}
+		otherUser := models.User{UserID: models.UserID(uuid.New())}
 
 		err := s.db.UpsertUser(context.Background(), otherUser)
 		s.Require().NoError(err)
 
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusNotFound, &transaction, nil, otherUser)
@@ -427,18 +431,18 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 
 	s.Run("user is not found in the database", func() {
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			FromWalletID: createdWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			FromWalletID: &createdWallet.WalletID,
 			Amount:       4600.0,
 			Currency:     "RUB",
 		}
 
 		newUser := models.User{
-			UserID: uuid.New(),
+			UserID: models.UserID(uuid.New()),
 		}
 
 		createdWallet.UserID = newUser.UserID
-		uuidString := createdWallet.WalletID.String()
+		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/withdrawal"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusNotFound, &transaction, nil, newUser)
@@ -448,19 +452,19 @@ func (s *IntegrationTestSuite) TestWithdrawFunds() {
 //nolint:maintidx
 func (s *IntegrationTestSuite) TestTransfer() {
 	toWallet := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		WalletName: "transferWallet_1",
 		Currency:   "RUB",
 	}
 
 	fromWallet := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		WalletName: "transferWallet_2",
 		Currency:   "RUB",
 	}
 
 	fromWalletFX := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		WalletName: "transferWallet_3",
 		Currency:   "USD",
 	}
@@ -483,51 +487,51 @@ func (s *IntegrationTestSuite) TestTransfer() {
 	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &fromWalletFX, &createdFromWalletFX, existingUser)
 
 	transactionTo := models.Transaction{
-		ID:         uuid.New(),
-		ToWalletID: toWallet.WalletID,
+		ID:         models.TxID(uuid.New()),
+		ToWalletID: &toWallet.WalletID,
 		Amount:     1000.0,
 		Currency:   "RUB",
 	}
 
 	transactionFrom := models.Transaction{
-		ID:         uuid.New(),
-		ToWalletID: fromWallet.WalletID,
+		ID:         models.TxID(uuid.New()),
+		ToWalletID: &fromWallet.WalletID,
 		Amount:     8000.0,
 		Currency:   "RUB",
 	}
 
 	transactionFromFX := models.Transaction{
-		ID:         uuid.New(),
-		ToWalletID: fromWalletFX.WalletID,
+		ID:         models.TxID(uuid.New()),
+		ToWalletID: &fromWalletFX.WalletID,
 		Amount:     200.0,
 		Currency:   "USD",
 	}
 
-	uuidString := createdToWallet.WalletID.String()
+	uuidString := uuid.UUID(createdToWallet.WalletID).String()
 	walletIDPath := walletPath + "/" + uuidString + "/deposit"
 
 	s.sendRequest(http.MethodPut, walletIDPath, http.StatusOK, &transactionTo, nil, existingUser)
 
-	uuidString = createdFromWallet.WalletID.String()
+	uuidString = uuid.UUID(createdFromWallet.WalletID).String()
 	walletIDPath = walletPath + "/" + uuidString + "/deposit"
 
 	s.sendRequest(http.MethodPut, walletIDPath, http.StatusOK, &transactionFrom, nil, existingUser)
 
-	uuidString = createdFromWalletFX.WalletID.String()
+	uuidString = uuid.UUID(createdFromWalletFX.WalletID).String()
 	walletIDPath = walletPath + "/" + uuidString + "/deposit"
 
 	s.sendRequest(http.MethodPut, walletIDPath, http.StatusOK, &transactionFromFX, nil, existingUser)
 
 	s.Run("transfer processed successfully", func() {
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       500.0,
 			Currency:     "RUB",
 		}
 
-		uuidString := createdFromWallet.WalletID.String()
+		uuidString := uuid.UUID(createdFromWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/transfer"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusOK, &transaction, nil, existingUser)
@@ -536,10 +540,10 @@ func (s *IntegrationTestSuite) TestTransfer() {
 
 		var updatedFromWallet models.Wallet
 
-		uuidStringTo := createdToWallet.WalletID.String()
+		uuidStringTo := uuid.UUID(createdToWallet.WalletID).String()
 		walletIDPathTo := walletPath + "/" + uuidStringTo
 
-		uuidStringFrom := createdFromWallet.WalletID.String()
+		uuidStringFrom := uuid.UUID(createdFromWallet.WalletID).String()
 		walletIDPathFrom := walletPath + "/" + uuidStringFrom
 
 		s.sendRequest(http.MethodGet, walletIDPathTo, http.StatusOK, nil, &updatedToWallet, existingUser)
@@ -554,14 +558,14 @@ func (s *IntegrationTestSuite) TestTransfer() {
 
 	s.Run("zero amount transfer", func() {
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       0.0,
 			Currency:     "RUB",
 		}
 
-		uuidString := createdFromWallet.WalletID.String()
+		uuidString := uuid.UUID(createdFromWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/transfer"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusBadRequest, &transaction, nil, existingUser)
@@ -569,14 +573,14 @@ func (s *IntegrationTestSuite) TestTransfer() {
 
 	s.Run("negative amount transfer", func() {
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       -60.0,
 			Currency:     "RUB",
 		}
 
-		uuidString := createdFromWallet.WalletID.String()
+		uuidString := uuid.UUID(createdFromWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/transfer"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusBadRequest, &transaction, nil, existingUser)
@@ -584,56 +588,60 @@ func (s *IntegrationTestSuite) TestTransfer() {
 
 	s.Run("transfer amount exceeds source wallet balance", func() {
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       50000.0,
 			Currency:     "RUB",
 		}
 
-		uuidString := createdFromWallet.WalletID.String()
+		uuidString := uuid.UUID(createdFromWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/transfer"
 
-		s.sendRequest(http.MethodPut, walletIDPath, http.StatusBadRequest, &transaction, nil, existingUser)
+		s.sendRequest(http.MethodPut, walletIDPath, http.StatusConflict, &transaction, nil, existingUser)
 	})
 
 	s.Run("wrong currency transaction failed", func() {
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       5.0,
 			Currency:     "EUR",
 		}
-		uuidString := createdFromWallet.WalletID.String()
+		uuidString := uuid.UUID(createdFromWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/transfer"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusUnprocessableEntity, &transaction, nil, existingUser)
 	})
 
 	s.Run("target wallet not found", func() {
+		newWalletID := models.WalletID(uuid.New())
+
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			ToWalletID:   uuid.New(),
-			FromWalletID: createdFromWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			ToWalletID:   &newWalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       50.0,
 			Currency:     "RUB",
 		}
-		uuidString := createdFromWallet.WalletID.String()
+		uuidString := uuid.UUID(createdFromWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/transfer"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusNotFound, &transaction, nil, existingUser)
 	})
 
 	s.Run("source wallet not found", func() {
+		newWalletID := models.WalletID(uuid.New())
+
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: uuid.New(),
+			ID:           models.TxID(uuid.New()),
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &newWalletID,
 			Amount:       50.0,
 			Currency:     "RUB",
 		}
-		uuidString := createdFromWallet.WalletID.String()
+		uuidString := uuid.UUID(createdFromWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/transfer"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusNotFound, &transaction, nil, existingUser)
@@ -641,55 +649,55 @@ func (s *IntegrationTestSuite) TestTransfer() {
 
 	s.Run("user does not own the source wallet", func() {
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWallet.WalletID,
+			ID:           models.TxID(uuid.New()),
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWallet.WalletID,
 			Amount:       45.0,
 			Currency:     "RUB",
 		}
 
 		otherUser := models.User{
-			UserID: uuid.New(),
+			UserID: models.UserID(uuid.New()),
 		}
 
 		err = s.db.UpsertUser(context.Background(), otherUser)
 		s.Require().NoError(err)
 
-		uuidString := createdFromWallet.WalletID.String()
+		uuidString := uuid.UUID(createdFromWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/transfer"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusNotFound, &transaction, nil, otherUser)
 	})
 
 	s.Run("successful transfer of funds from fx wallet", func() {
-		uuidString = createdFromWalletFX.WalletID.String()
+		uuidString = uuid.UUID(createdFromWalletFX.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdFromWalletFX, existingUser)
 
-		uuidString = createdToWallet.WalletID.String()
+		uuidString = uuid.UUID(createdToWallet.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &createdToWallet, existingUser)
 
 		transaction := models.Transaction{
-			ID:           uuid.New(),
-			ToWalletID:   createdToWallet.WalletID,
-			FromWalletID: createdFromWalletFX.WalletID,
+			ID:           models.TxID(uuid.New()),
+			ToWalletID:   &createdToWallet.WalletID,
+			FromWalletID: &createdFromWalletFX.WalletID,
 			Amount:       40.0,
 			Currency:     "USD",
 		}
 
 		currency := Currency{Name: transaction.Currency, Value: exchangeRatesToRub[transaction.Currency] / exchangeRatesToRub[createdToWallet.Currency]}
 
-		uuidString := createdFromWalletFX.WalletID.String()
+		uuidString := uuid.UUID(createdFromWalletFX.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/transfer"
 
 		s.sendRequest(http.MethodPut, walletIDPath, http.StatusOK, &transaction, nil, existingUser)
 
 		var updatedWalletFX models.Wallet
 
-		uuidString = createdFromWalletFX.WalletID.String()
+		uuidString = uuid.UUID(createdFromWalletFX.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &updatedWalletFX, existingUser)
@@ -700,7 +708,7 @@ func (s *IntegrationTestSuite) TestTransfer() {
 
 		var updatedWalletTo models.Wallet
 
-		uuidString = createdToWallet.WalletID.String()
+		uuidString = uuid.UUID(createdToWallet.WalletID).String()
 		walletIDPath = walletPath + "/" + uuidString
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &updatedWalletTo, existingUser)
@@ -719,21 +727,21 @@ func (s *IntegrationTestSuite) TestGetTransactions() {
 	s.Require().NoError(err)
 
 	walletOne := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "FirstWallet",
 		Currency:   "RUB",
 	}
 
 	walletTwo := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "SecondWallet",
 		Currency:   "USD",
 	}
 
 	walletThree := models.Wallet{
-		WalletID:   uuid.New(),
+		WalletID:   models.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "ThirdWallet",
 		Currency:   "RUB",
@@ -749,62 +757,62 @@ func (s *IntegrationTestSuite) TestGetTransactions() {
 	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletThree, &createdThree, existingUser)
 
 	transactionOne := models.Transaction{
-		ID:         uuid.New(),
-		ToWalletID: createdOne.WalletID,
+		ID:         models.TxID(uuid.New()),
+		ToWalletID: &createdOne.WalletID,
 		Amount:     40010.0,
 		Currency:   "RUB",
 	}
 
-	uuidStringOne := createdOne.WalletID.String()
+	uuidStringOne := uuid.UUID(createdOne.WalletID).String()
 	walletIDPathOne := walletPath + "/" + uuidStringOne + "/deposit"
 
 	s.sendRequest(http.MethodPut, walletIDPathOne, http.StatusOK, &transactionOne, nil, existingUser)
 
 	transactionTwo := models.Transaction{
-		ID:         uuid.New(),
-		ToWalletID: createdTwo.WalletID,
+		ID:         models.TxID(uuid.New()),
+		ToWalletID: &createdTwo.WalletID,
 		Amount:     204.0,
 		Currency:   "USD",
 	}
 
-	uuidStringTwo := createdTwo.WalletID.String()
+	uuidStringTwo := uuid.UUID(createdTwo.WalletID).String()
 	walletIDPathTwo := walletPath + "/" + uuidStringTwo + "/deposit"
 
 	s.sendRequest(http.MethodPut, walletIDPathTwo, http.StatusOK, &transactionTwo, nil, existingUser)
 
 	transactionThree := models.Transaction{
-		ID:         uuid.New(),
-		ToWalletID: createdThree.WalletID,
+		ID:         models.TxID(uuid.New()),
+		ToWalletID: &createdThree.WalletID,
 		Amount:     3000.0,
 		Currency:   "RUB",
 	}
 
-	uuidStringThree := createdThree.WalletID.String()
+	uuidStringThree := uuid.UUID(createdThree.WalletID).String()
 	walletIDPathThree := walletPath + "/" + uuidStringThree + "/deposit"
 
 	s.sendRequest(http.MethodPut, walletIDPathThree, http.StatusOK, &transactionThree, nil, existingUser)
 
 	transactionFour := models.Transaction{
-		ID:           uuid.New(),
-		FromWalletID: createdOne.WalletID,
+		ID:           models.TxID(uuid.New()),
+		FromWalletID: &createdOne.WalletID,
 		Amount:       5000.0,
 		Currency:     "RUB",
 	}
 
-	uuidStringFour := createdOne.WalletID.String()
+	uuidStringFour := uuid.UUID(createdOne.WalletID).String()
 	walletIDPathFour := walletPath + "/" + uuidStringFour + "/withdrawal"
 
 	s.sendRequest(http.MethodPut, walletIDPathFour, http.StatusOK, &transactionFour, nil, existingUser)
 
 	transactionFive := models.Transaction{
-		ID:           uuid.New(),
-		ToWalletID:   createdThree.WalletID,
-		FromWalletID: createdOne.WalletID,
+		ID:           models.TxID(uuid.New()),
+		ToWalletID:   &createdThree.WalletID,
+		FromWalletID: &createdOne.WalletID,
 		Amount:       7500.0,
 		Currency:     "RUB",
 	}
 
-	uuidStringFive := createdOne.WalletID.String()
+	uuidStringFive := uuid.UUID(createdOne.WalletID).String()
 	walletIDPathFive := walletPath + "/" + uuidStringFive + "/transfer"
 
 	s.sendRequest(http.MethodPut, walletIDPathFive, http.StatusOK, &transactionFive, nil, existingUser)
@@ -812,7 +820,7 @@ func (s *IntegrationTestSuite) TestGetTransactions() {
 	s.Run("get all transactions for walletOne", func() {
 		var transactions []models.Transaction
 
-		uuidStrng := createdOne.WalletID.String()
+		uuidStrng := uuid.UUID(createdOne.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidStrng + "/transactions"
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &transactions, existingUser)
@@ -823,7 +831,7 @@ func (s *IntegrationTestSuite) TestGetTransactions() {
 	s.Run("sorted by transacton type with limit 2", func() {
 		var transactions []models.Transaction
 
-		uuidStrng := createdOne.WalletID.String()
+		uuidStrng := uuid.UUID(createdOne.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidStrng + "/transactions" + "?sorting=transaction_type&limit=2"
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &transactions, existingUser)
@@ -836,7 +844,7 @@ func (s *IntegrationTestSuite) TestGetTransactions() {
 	s.Run("sorted by transacton type with limit 2 and offset 1", func() {
 		var transactions []models.Transaction
 
-		uuidStrng := createdOne.WalletID.String()
+		uuidStrng := uuid.UUID(createdOne.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidStrng + "/transactions" + "?sorting=transaction_type&limit=2&offset=1"
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &transactions, existingUser)
@@ -849,7 +857,7 @@ func (s *IntegrationTestSuite) TestGetTransactions() {
 	s.Run("sorted by transaction type with limit 2 and offset 1, descending true", func() {
 		var transactions []models.Transaction
 
-		uuidStrng := createdOne.WalletID.String()
+		uuidStrng := uuid.UUID(createdOne.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidStrng + "/transactions" + "?sorting=transaction_type&limit=2&offset=1&descending=true"
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &transactions, existingUser)
@@ -861,13 +869,13 @@ func (s *IntegrationTestSuite) TestGetTransactions() {
 
 	s.Run("user does not own any wallets", func() {
 		otherUser := models.User{
-			UserID: uuid.New(),
+			UserID: models.UserID(uuid.New()),
 		}
 
 		err := s.db.UpsertUser(context.Background(), otherUser)
 		s.Require().NoError(err)
 
-		uuidString := createdOne.WalletID.String()
+		uuidString := uuid.UUID(createdOne.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString + "/transactions"
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusNotFound, nil, nil, otherUser)

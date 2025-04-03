@@ -15,21 +15,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
-	tx, err := d.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
+func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
+	tx := d.getTXFromCtx(ctx)
 
-	defer func() {
-		if err = tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			log.Warn().Err(err).Msg("failed to rollback transaction")
-		}
-	}()
-
-	query := `UPDATE wallets
-				SET balance = balance + $3::numeric * $4::numeric, updated_at = NOW() 
-				WHERE wallet_id = $1 AND user_id = $2 AND active = true`
+	query := `
+UPDATE wallets
+SET balance = balance + $3::numeric * $4::numeric, updated_at = NOW() 
+WHERE TRUE
+	AND wallet_id = $1 
+	AND user_id = $2 
+	AND active = true`
 
 	result, err := tx.Exec(ctx, query, transaction.ToWalletID, userID, transaction.Amount, rate)
 	if err != nil {
@@ -40,34 +35,23 @@ func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction,
 		return models.ErrWalletNotFound
 	}
 
-	transaction.Type = "deposit"
-
 	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
 }
 
-func (d *DataStore) WithdrawFunds(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
-	tx, err := d.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
+func (d *DataStore) Withdraw(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
+	tx := d.getTXFromCtx(ctx)
 
-	defer func() {
-		if err = tx.Rollback(ctx); err != nil && errors.Is(err, pgx.ErrTxClosed) {
-			log.Warn().Err(err).Msg("failed to rollback transaction")
-		}
-	}()
-
-	query := `UPDATE wallets
-				SET balance = balance - $3::numeric * $4::numeric, updated_at = NOW()
-				WHERE wallet_id = $1 AND user_id = $2 AND active = true`
+	query := `
+UPDATE wallets
+SET balance = balance - $3::numeric * $4::numeric, updated_at = NOW()
+WHERE TRUE 
+	AND wallet_id = $1 
+	AND user_id = $2 
+	AND active = true`
 
 	result, err := tx.Exec(ctx, query, transaction.FromWalletID, userID, transaction.Amount, rate)
 	if err != nil {
@@ -78,34 +62,23 @@ func (d *DataStore) WithdrawFunds(ctx context.Context, transaction models.Transa
 		return models.ErrWalletNotFound
 	}
 
-	transaction.Type = "withdrawal"
-
 	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)
-	}
-
-	if err = tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
 }
 
-func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction, userID uuid.UUID, rate float64) error {
-	tx, err := d.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
+func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
+	tx := d.getTXFromCtx(ctx)
 
-	defer func() {
-		if err = tx.Rollback(ctx); err != nil && errors.Is(err, pgx.ErrTxClosed) {
-			log.Warn().Err(err).Msg("failed to roolback transaction")
-		}
-	}()
-
-	queryFrom := `UPDATE wallets
-					SET balance = balance - $3::numeric, updated_at = NOW()
-					WHERE wallet_id = $1 AND user_id = $2 AND active = true`
+	queryFrom := `
+UPDATE wallets
+SET balance = balance - $3::numeric, updated_at = NOW()
+WHERE TRUE 
+	AND wallet_id = $1 
+	AND user_id = $2 
+	AND active = true`
 
 	resultFrom, err := tx.Exec(ctx, queryFrom, transaction.FromWalletID, userID, transaction.Amount)
 	if err != nil {
@@ -116,9 +89,13 @@ func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction
 		return models.ErrWalletNotFound
 	}
 
-	queryTo := `UPDATE wallets
-				SET balance = balance + $3::numeric * $4::numeric, updated_at = NOW()
-				WHERE wallet_id = $1 AND user_id = $2 AND active = true`
+	queryTo := `
+UPDATE wallets
+SET balance = balance + $3::numeric * $4::numeric, updated_at = NOW()
+WHERE TRUE 
+	AND wallet_id = $1 
+	AND user_id = $2 
+	AND active = true`
 
 	resultTo, err := tx.Exec(ctx, queryTo, transaction.ToWalletID, userID, transaction.Amount, rate)
 	if err != nil {
@@ -129,24 +106,23 @@ func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction
 		return models.ErrWalletNotFound
 	}
 
-	transaction.Type = "transfer"
-
 	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)
-	}
-
-	if err = tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
 }
 
-func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID) ([]models.Transaction, error) {
+//nolint:lll
+func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID models.WalletID, userID models.UserID) ([]models.Transaction, error) {
+	_, err := d.GetWallet(ctx, walletID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract wallet: %w", err)
+	}
+
 	var (
 		transactionsAll []models.Transaction
 		rows            pgx.Rows
-		err             error
 	)
 
 	query, args := d.GetTransactionsQuery(request, walletID)
@@ -187,7 +163,7 @@ func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalle
 	return transactionsAll, nil
 }
 
-func (d *DataStore) GetTransactionsQuery(request models.GetWalletsRequest, walletID uuid.UUID) (string, []any) {
+func (d *DataStore) GetTransactionsQuery(request models.GetWalletsRequest, walletID models.WalletID) (string, []any) {
 	var (
 		sb              strings.Builder
 		args            []any
@@ -233,28 +209,37 @@ func (d *DataStore) GetTransactionsQuery(request models.GetWalletsRequest, walle
 	return sb.String(), args
 }
 
-func (d *DataStore) storeTxIntoTable(ctx context.Context, transaction models.Transaction, dbTx pgx.Tx) error {
+func (d *DataStore) storeTxIntoTable(ctx context.Context, transaction models.Transaction, tx transaction) error {
 	transaction.CommittedAt = time.Now()
 
-	query := `INSERT INTO transactions (id, transaction_type, to_wallet_id, from_wallet_id, amount, currency, committed_at)
-				VALUES ($1, $2, $3, $4, $5, $6, $7)
-				RETURNING id`
+	query := `
+INSERT INTO transactions (id, transaction_type, to_wallet_id, from_wallet_id, amount, currency, committed_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	args := []any{
 		uuid.New(),
 		transaction.Type,
-		transaction.ToWalletID,
-		transaction.FromWalletID,
+		nil,
+		nil,
 		transaction.Amount,
 		transaction.Currency,
 		transaction.CommittedAt,
 	}
 
-	err := dbTx.QueryRow(ctx, query, args...).Scan(&transaction.ID)
-	if err != nil {
+	if transaction.ToWalletID != nil {
+		args[2] = transaction.ToWalletID
+	}
+
+	if transaction.FromWalletID != nil {
+		args[3] = transaction.FromWalletID
+	}
+
+	if _, err := tx.Exec(ctx, query, args...); err != nil {
 		var pgErr *pgconn.PgError
 
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation {
+			log.Error().Err(err).Msg("wallet not found: foreign key violation")
+
 			return models.ErrWalletNotFound
 		}
 

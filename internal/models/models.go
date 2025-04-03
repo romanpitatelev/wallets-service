@@ -8,19 +8,20 @@ import (
 	"github.com/google/uuid"
 )
 
-type IP struct {
-	Address string `json:"address"`
-	Count   int    `json:"count"`
-}
+type (
+	WalletID uuid.UUID
+	UserID   uuid.UUID
+	TxID     uuid.UUID
+)
 
 type User struct {
-	UserID    uuid.UUID  `json:"userId"`
+	UserID    UserID     `json:"userId"`
 	DeletedAt *time.Time `json:"deletedAt"`
 }
 
 type Wallet struct {
-	WalletID   uuid.UUID  `json:"walletId"`
-	UserID     uuid.UUID  `json:"userId"`
+	WalletID   WalletID   `json:"walletId"`
+	UserID     UserID     `json:"userId"`
 	WalletName string     `json:"walletName"`
 	Balance    float64    `json:"balance"`
 	Currency   string     `json:"currency"`
@@ -31,9 +32,9 @@ type Wallet struct {
 }
 
 type WalletUpdate struct {
-	WalletName string    `json:"walletName"`
-	UserID     uuid.UUID `json:"userId"`
-	Currency   string    `json:"currency"`
+	WalletName string `json:"walletName"`
+	UserID     UserID `json:"userId"`
+	Currency   string `json:"currency"`
 }
 
 type GetWalletsRequest struct {
@@ -58,6 +59,7 @@ var (
 	ErrNegativeAmount       = errors.New("negative amount transaction")
 	ErrSameWallet           = errors.New("same wallet transaction")
 	ErrInsufficientFunds    = errors.New("wallet has insufficient funds")
+	ErrInvalidTransaction   = errors.New("invalid wallets' data in transaction")
 )
 
 type XRRequest struct {
@@ -70,24 +72,74 @@ type XRResponse struct {
 }
 
 type Claims struct {
-	UserID uuid.UUID `json:"userId"`
-	Email  string    `json:"email"`
-	Role   string    `json:"role"`
+	UserID UserID `json:"userId"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
 
 type UserInfo struct {
-	UserID uuid.UUID `json:"userId"`
-	Email  string    `json:"email"`
-	Role   string    `json:"role"`
+	UserID UserID `json:"userId"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
 }
 
 type Transaction struct {
-	ID           uuid.UUID `json:"transactionId"`
+	ID           TxID      `json:"transactionId"`
 	Type         string    `json:"type"`
-	ToWalletID   uuid.UUID `json:"toWalletId"`
-	FromWalletID uuid.UUID `json:"fromWalletId"`
+	ToWalletID   *WalletID `json:"toWalletId"`
+	FromWalletID *WalletID `json:"fromWalletId"`
 	Amount       float64   `json:"amount"`
 	Currency     string    `json:"currency"`
 	CommittedAt  time.Time `json:"committedAt"`
+}
+
+func (w *Wallet) Validate() error {
+	if w.WalletName == "" {
+		return ErrWalletEmptyName
+	}
+
+	w.Balance = 0
+	w.Active = true
+
+	return nil
+}
+
+func (u *UserInfo) Validate(walletUserID UserID) error {
+	if walletUserID != u.UserID {
+		return ErrWrongUserID
+	}
+
+	return nil
+}
+
+func (t *Transaction) Validate() error {
+	switch {
+	case t.Amount == 0:
+		return ErrZeroAmount
+	case t.Amount < 0:
+		return ErrNegativeAmount
+	case t.FromWalletID == t.ToWalletID:
+		return ErrSameWallet
+	default:
+		if t.Type == "deposit" {
+			if t.ToWalletID == nil || t.FromWalletID != nil {
+				return ErrInvalidTransaction
+			}
+		}
+
+		if t.Type == "withdraw" {
+			if t.ToWalletID != nil || t.FromWalletID == nil {
+				return ErrInvalidTransaction
+			}
+		}
+
+		if t.Type == "transfer" {
+			if t.ToWalletID == nil || t.FromWalletID == nil {
+				return ErrInvalidTransaction
+			}
+		}
+	}
+
+	return nil
 }

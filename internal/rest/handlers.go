@@ -18,22 +18,21 @@ const (
 )
 
 type service interface {
-	CreateWallet(ctx context.Context, wallet models.Wallet, userID uuid.UUID) (models.Wallet, error)
-	GetWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) (models.Wallet, error)
-	UpdateWallet(ctx context.Context, walletID uuid.UUID, updatedWallet models.WalletUpdate, userID uuid.UUID) (models.Wallet, error)
-	DeleteWallet(ctx context.Context, walletID uuid.UUID, userID uuid.UUID) error
-	GetAllWallets(ctx context.Context, request models.GetWalletsRequest, userID uuid.UUID) ([]models.Wallet, error)
-	Deposit(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error
-	WithdrawFunds(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error
-	Transfer(ctx context.Context, transaction models.Transaction, userID uuid.UUID) error
-	GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID uuid.UUID, userID uuid.UUID) ([]models.Transaction, error)
+	CreateWallet(ctx context.Context, wallet models.Wallet, userID models.UserID) (models.Wallet, error)
+	GetWallet(ctx context.Context, walletID models.WalletID, userID models.UserID) (models.Wallet, error)
+	UpdateWallet(ctx context.Context, walletID models.WalletID, updatedWallet models.WalletUpdate, userID models.UserID) (models.Wallet, error)
+	DeleteWallet(ctx context.Context, walletID models.WalletID, userID models.UserID) error
+	GetAllWallets(ctx context.Context, request models.GetWalletsRequest, userID models.UserID) ([]models.Wallet, error)
+	Deposit(ctx context.Context, transaction models.Transaction, userID models.UserID) error
+	Withdraw(ctx context.Context, transaction models.Transaction, userID models.UserID) error
+	Transfer(ctx context.Context, transaction models.Transaction, userID models.UserID) error
+	GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID models.WalletID, userID models.UserID) ([]models.Transaction, error)
 }
 
 func (s *Server) createWallet(w http.ResponseWriter, r *http.Request) {
 	var wallet models.Wallet
 
 	if err := json.NewDecoder(r.Body).Decode(&wallet); err != nil {
-		log.Info().Err(err).Msg("failed to decode r.Body in createWallet")
 		http.Error(w, "error", http.StatusBadRequest)
 
 		return
@@ -42,26 +41,23 @@ func (s *Server) createWallet(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
 
-	validWallet, err := s.validateWallet(wallet)
+	err := wallet.Validate()
 	if err != nil {
-		log.Info().Err(err).Msg("wallet has failed validation check")
 		http.Error(w, "wallet validation error", http.StatusBadRequest)
 
 		return
 	}
 
-	validateUser, err := s.validateUser(wallet.UserID, userInfo.UserID)
+	err = userInfo.Validate(wallet.UserID)
 	if err != nil {
-		log.Info().Err(err).Msg("user has failed validation check")
 		http.Error(w, "user validation error", http.StatusNotFound)
 
 		return
 	}
 
-	createdWallet, err := s.service.CreateWallet(r.Context(), validWallet, validateUser)
+	createdWallet, err := s.service.CreateWallet(ctx, wallet, userInfo.UserID)
 	if err != nil {
-		log.Info().Err(err).Msg("failed to create wallet")
-		http.Error(w, "error", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return
 	}
@@ -81,7 +77,6 @@ func (s *Server) getWallet(w http.ResponseWriter, r *http.Request) {
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
-		log.Info().Err(err).Str("walletId", walletIDStr).Msg("Failed to parse walletId")
 		http.Error(w, "invalid wallet id", http.StatusBadRequest)
 
 		return
@@ -96,23 +91,21 @@ func (s *Server) getWallet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if userInfo.UserID == uuid.Nil {
+	if userInfo.UserID == models.UserID(uuid.Nil) {
 		http.Error(w, "userID empty", http.StatusBadRequest)
 
 		return
 	}
 
-	wallet, err := s.service.GetWallet(r.Context(), walletID, userInfo.UserID)
+	wallet, err := s.service.GetWallet(ctx, models.WalletID(walletID), userInfo.UserID)
 	if err != nil {
 		if errors.Is(err, models.ErrWalletNotFound) {
-			log.Info().Err(err).Msg("wallet not found in getWallet()")
 			http.Error(w, "wallet not found", http.StatusNotFound)
 
 			return
 		}
 
-		log.Info().Err(err).Msg("failed to get wallet info in getWallet()")
-		http.Error(w, "failed to get wallet", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return
 	}
@@ -132,7 +125,6 @@ func (s *Server) updateWallet(w http.ResponseWriter, r *http.Request) {
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
-		log.Info().Err(err).Str("walletId", walletIDStr).Msg("Failed to parse walletId")
 		http.Error(w, "invalid wallet id", http.StatusBadRequest)
 
 		return
@@ -144,28 +136,24 @@ func (s *Server) updateWallet(w http.ResponseWriter, r *http.Request) {
 	var updatedDecodedWallet models.WalletUpdate
 
 	if err := json.NewDecoder(r.Body).Decode(&updatedDecodedWallet); err != nil {
-		log.Info().Err(err).Msg("failed to decode updated wallet")
 		http.Error(w, "error decoding json when updating wallet", http.StatusBadRequest)
 
 		return
 	}
 
-	updatedWallet, err := s.service.UpdateWallet(r.Context(), walletID, updatedDecodedWallet, userInfo.UserID)
+	updatedWallet, err := s.service.UpdateWallet(ctx, models.WalletID(walletID), updatedDecodedWallet, userInfo.UserID)
 
 	switch {
 	case errors.Is(err, models.ErrWalletNotFound):
-		log.Info().Err(err).Msg("wallet not found in updateWallet()")
 		http.Error(w, "error wallet not found", http.StatusNotFound)
 
 		return
 	case errors.Is(err, models.ErrWrongCurrency):
-		log.Info().Err(err).Msg("wrong currency error in updateWallet()")
 		http.Error(w, "error wrong currency", http.StatusUnprocessableEntity)
 
 		return
 	case err != nil:
-		log.Info().Err(err).Msg("failed to update due to internal server error in updateWallet()")
-		http.Error(w, "failed to update wallet", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return
 	}
@@ -185,7 +173,6 @@ func (s *Server) deleteWallet(w http.ResponseWriter, r *http.Request) {
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
-		log.Info().Err(err).Str("walletId", walletIDStr).Msg("Failed to parse walletId")
 		http.Error(w, "invalid wallet id", http.StatusBadRequest)
 
 		return
@@ -194,22 +181,19 @@ func (s *Server) deleteWallet(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
 
-	err = s.service.DeleteWallet(r.Context(), walletID, userInfo.UserID)
+	err = s.service.DeleteWallet(ctx, models.WalletID(walletID), userInfo.UserID)
 
 	switch {
 	case errors.Is(err, models.ErrWalletNotFound):
-		log.Info().Err(err).Msg("wallet not found")
 		http.Error(w, "wallet not found", http.StatusNotFound)
 
 		return
 	case errors.Is(err, models.ErrNonZeroBalanceWallet):
-		log.Info().Err(err).Msg("deletion forbidden")
 		http.Error(w, "wallet has non-zero balance, deletion forbidden", http.StatusBadRequest)
 
 		return
 	case err != nil:
-		log.Info().Err(err).Msg("error deleting wallet")
-		http.Error(w, "error deleting wallet", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 		return
 	}
@@ -225,7 +209,6 @@ func (s *Server) getWallets(w http.ResponseWriter, r *http.Request) {
 
 	wallets, err := s.service.GetAllWallets(ctx, request, userInfo.UserID)
 	if err != nil {
-		log.Info().Err(err).Msg("failed to obtain wallets")
 		http.Error(w, "failed to obtain wallets", http.StatusNotFound)
 
 		return
@@ -276,66 +259,38 @@ func parseGetRequest(r *http.Request) models.GetWalletsRequest {
 	return parameters
 }
 
-func (s *Server) validateWallet(wallet models.Wallet) (models.Wallet, error) {
-	if wallet.WalletName == "" {
-		return wallet, models.ErrWalletEmptyName
-	}
-
-	wallet.Balance = 0
-	wallet.Active = true
-
-	return wallet, nil
-}
-
-func (s *Server) validateUser(walletUserID uuid.UUID, userID uuid.UUID) (uuid.UUID, error) {
-	if walletUserID != userID {
-		return userID, models.ErrWrongUserID
-	}
-
-	return userID, nil
-}
-
 func (s *Server) deposit(w http.ResponseWriter, r *http.Request) {
 	var transaction models.Transaction
 
 	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
-		log.Info().Err(err).Msg("failed to decode r.Body in deposit()")
 		http.Error(w, "error", http.StatusBadRequest)
 
 		return
 	}
 
+	transaction.Type = "deposit"
+
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
 
-	if err := s.validateTransaction(transaction); err != nil {
-		log.Info().Err(err).Msg("deposit transaction failed")
+	if err := transaction.Validate(); err != nil {
 		http.Error(w, "transaction validation error", http.StatusBadRequest)
 
 		return
 	}
 
-	if transaction.ToWalletID == uuid.Nil || transaction.FromWalletID != uuid.Nil {
-		http.Error(w, "transaction validation error", http.StatusBadRequest)
-
-		return
-	}
-
-	if err := s.service.Deposit(r.Context(), transaction, userInfo.UserID); err != nil {
+	if err := s.service.Deposit(ctx, transaction, userInfo.UserID); err != nil {
 		switch {
 		case errors.Is(err, models.ErrWalletNotFound):
-			log.Info().Err(err).Msg("wallet not found")
 			http.Error(w, "wallet not found", http.StatusNotFound)
 
 			return
 		case errors.Is(err, models.ErrWrongCurrency):
-			log.Info().Err(err).Msg("currency not supported")
 			http.Error(w, "invalid currency", http.StatusUnprocessableEntity)
 
 			return
 		default:
-			log.Info().Err(err).Msg("error depositing funds")
-			http.Error(w, "error depositing funds", http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 			return
 		}
@@ -345,52 +300,42 @@ func (s *Server) deposit(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) withdrawFunds(w http.ResponseWriter, r *http.Request) {
+func (s *Server) withdraw(w http.ResponseWriter, r *http.Request) {
 	var transaction models.Transaction
 
 	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
-		log.Info().Err(err).Msg("failed to decode r.Body in withdrawFunds()")
 		http.Error(w, "error", http.StatusBadRequest)
 
 		return
 	}
 
+	transaction.Type = "withdraw"
+
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
 
-	if err := s.validateTransaction(transaction); err != nil {
-		log.Info().Err(err).Msg("withdrawal failed")
+	if err := transaction.Validate(); err != nil {
 		http.Error(w, "transaction validation error", http.StatusBadRequest)
 
 		return
 	}
 
-	if transaction.ToWalletID != uuid.Nil || transaction.FromWalletID == uuid.Nil {
-		http.Error(w, "transaction validation error", http.StatusBadRequest)
-
-		return
-	}
-
-	if err := s.service.WithdrawFunds(r.Context(), transaction, userInfo.UserID); err != nil {
+	if err := s.service.Withdraw(ctx, transaction, userInfo.UserID); err != nil {
 		switch {
 		case errors.Is(err, models.ErrWalletNotFound):
-			log.Info().Err(err).Msg("wallet not found")
 			http.Error(w, "wallet not found", http.StatusNotFound)
 
 			return
 		case errors.Is(err, models.ErrWrongCurrency):
-			log.Info().Err(err).Msg("currency not supported")
 			http.Error(w, "invalid currency", http.StatusUnprocessableEntity)
 
 			return
 		case errors.Is(err, models.ErrInsufficientFunds):
-			log.Info().Err(err).Msg("insufficient funds error")
-			http.Error(w, "invalid currency", http.StatusBadRequest)
+			http.Error(w, "insufficient funds", http.StatusConflict)
 
 			return
 		default:
-			log.Info().Err(err).Msg("error depositing funds")
-			http.Error(w, "error withdrawing funds", http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 			return
 		}
@@ -401,46 +346,36 @@ func (s *Server) transfer(w http.ResponseWriter, r *http.Request) {
 	var transaction models.Transaction
 
 	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
-		log.Info().Err(err).Msg("failed to decode r.Body in transfer()")
 		http.Error(w, "error", http.StatusBadRequest)
 	}
+
+	transaction.Type = "transfer"
 
 	ctx := r.Context()
 	userInfo := s.getUserInfo(ctx)
 
-	if err := s.validateTransaction(transaction); err != nil {
-		log.Info().Err(err).Msg("withdrawal failed")
+	if err := transaction.Validate(); err != nil {
 		http.Error(w, "transaction validation error", http.StatusBadRequest)
 
 		return
 	}
 
-	if transaction.ToWalletID == uuid.Nil || transaction.FromWalletID == uuid.Nil {
-		http.Error(w, "transaction validation error", http.StatusBadRequest)
-
-		return
-	}
-
-	if err := s.service.Transfer(r.Context(), transaction, userInfo.UserID); err != nil {
+	if err := s.service.Transfer(ctx, transaction, userInfo.UserID); err != nil {
 		switch {
 		case errors.Is(err, models.ErrWalletNotFound):
-			log.Info().Err(err).Msg("wallet not found")
 			http.Error(w, "wallet not found", http.StatusNotFound)
 
 			return
 		case errors.Is(err, models.ErrWrongCurrency):
-			log.Info().Err(err).Msg("currency unsupported")
 			http.Error(w, "invalid currency", http.StatusUnprocessableEntity)
 
 			return
 		case errors.Is(err, models.ErrInsufficientFunds):
-			log.Info().Err(err).Msg("insufficient funds in the source wallet")
-			http.Error(w, "invalid currency", http.StatusBadRequest)
+			http.Error(w, "insufficient funds", http.StatusConflict)
 
 			return
 		default:
-			log.Info().Err(err).Msg("error depositing funds")
-			http.Error(w, "error withdrawing funds", http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 
 			return
 		}
@@ -454,7 +389,6 @@ func (s *Server) getTransactions(w http.ResponseWriter, r *http.Request) {
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
-		log.Info().Err(err).Str("walletId", walletIDStr).Msg("Failed to parse walletId")
 		http.Error(w, "invalid wallet id", http.StatusBadRequest)
 
 		return
@@ -462,9 +396,8 @@ func (s *Server) getTransactions(w http.ResponseWriter, r *http.Request) {
 
 	userInfo := s.getUserInfo(ctx)
 
-	transactions, err := s.service.GetTransactions(ctx, request, walletID, userInfo.UserID)
+	transactions, err := s.service.GetTransactions(ctx, request, models.WalletID(walletID), userInfo.UserID)
 	if err != nil {
-		log.Info().Err(err).Msg("failed to obtain transactions")
 		http.Error(w, "failed to obrain transactions", http.StatusNotFound)
 
 		return
@@ -478,17 +411,4 @@ func (s *Server) getTransactions(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-}
-
-func (s *Server) validateTransaction(t models.Transaction) error {
-	switch {
-	case t.Amount == 0:
-		return models.ErrZeroAmount
-	case t.Amount < 0:
-		return models.ErrNegativeAmount
-	case t.FromWalletID == t.ToWalletID:
-		return models.ErrSameWallet
-	}
-
-	return nil
 }

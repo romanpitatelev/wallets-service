@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/romanpitatelev/wallets-service/internal/broker"
 	"github.com/romanpitatelev/wallets-service/internal/models"
-	"github.com/romanpitatelev/wallets-service/internal/producer"
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
@@ -41,7 +41,7 @@ type IntegrationTestSuite struct {
 	server     *rest.Server
 	xrServer   *xrserver.Server
 	client     *xrclient.Client
-	txProducer *producer.Producer
+	txProducer *broker.Producer
 }
 
 func (s *IntegrationTestSuite) SetupSuite() {
@@ -66,7 +66,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 	time.Sleep(5 * time.Second)
 
-	s.txProducer, err = producer.New(producer.Config{Addr: kafkaAddress})
+	s.txProducer, err = broker.NewProducer(broker.ProducerConfig{Addr: kafkaAddress})
 	s.Require().NoError(err)
 
 	s.xrServer = xrserver.New(xrPort)
@@ -84,11 +84,11 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	log.Debug().Msg("xr client is ready")
 
 	s.service = service.New(
-		s.db,
 		service.Config{
 			StaleWalletDuration: 0,
 			PerformCheckPeriod:  0,
 		},
+		s.db,
 		s.client,
 		s.txProducer,
 	)
@@ -109,7 +109,7 @@ func (s *IntegrationTestSuite) TearDownSuite() {
 }
 
 func (s *IntegrationTestSuite) TearDownTest() {
-	err := s.db.Truncate(context.Background(), "wallets", "users")
+	err := s.db.Truncate(context.Background(), "transactions", "wallets", "users")
 	s.Require().NoError(err)
 }
 

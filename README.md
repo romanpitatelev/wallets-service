@@ -1,7 +1,6 @@
 # go-wallet
 
-- transactions
 - history
 - metrics
-- mocks
+- indices
 - clean architecture
