@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"time"
 
@@ -141,6 +142,31 @@ func (d *DataStore) ArchiveStaleWallets(ctx context.Context, checkPeriod time.Du
 func (d *DataStore) Exec(ctx context.Context, query string, args ...any) error {
 	if _, err := d.pool.Exec(ctx, query, args...); err != nil {
 		return fmt.Errorf("error executing query %s: %w", query, err)
+	}
+
+	return nil
+}
+
+func (d *DataStore) DoWithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	ctx = d.storeTx(ctx, tx)
+
+	defer func() {
+		if err = tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			log.Warn().Err(err).Msg("failed to rollback transaction")
+		}
+	}()
+
+	if err := fn(ctx); err != nil {
+		return fmt.Errorf("error in fn(ctx): %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil

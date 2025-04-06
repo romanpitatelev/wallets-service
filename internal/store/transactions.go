@@ -35,6 +35,8 @@ WHERE TRUE
 		return models.ErrWalletNotFound
 	}
 
+	transaction.Type = "deposit"
+
 	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)
 	}
@@ -61,6 +63,8 @@ WHERE TRUE
 	if result.RowsAffected() == 0 {
 		return models.ErrWalletNotFound
 	}
+
+	transaction.Type = "withdraw"
 
 	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)
@@ -105,6 +109,8 @@ WHERE TRUE
 	if resultTo.RowsAffected() == 0 {
 		return models.ErrWalletNotFound
 	}
+
+	transaction.Type = "transfer"
 
 	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)

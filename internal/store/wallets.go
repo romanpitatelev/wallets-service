@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib" // functions from this package are not used
 	"github.com/romanpitatelev/wallets-service/internal/models"
-	"github.com/rs/zerolog/log"
 )
 
 func (d *DataStore) CreateWallet(ctx context.Context, wallet models.Wallet, userID models.UserID) (models.Wallet, error) {
@@ -95,6 +94,8 @@ WHERE TRUE
 
 //nolint:lll
 func (d *DataStore) UpdateWallet(ctx context.Context, walletID models.WalletID, newInfoWallet models.WalletUpdate, rate float64, userID models.UserID) (models.Wallet, error) {
+	tx := d.getTXFromCtx(ctx)
+
 	query := `
 UPDATE wallets
 SET wallet_name = $1, currency = $2, balance = $3 * balance, updated_at = $4
@@ -106,7 +107,7 @@ RETURNING wallet_id, user_id, wallet_name, balance, currency, created_at, update
 
 	updatedAt := time.Now()
 
-	row := d.pool.QueryRow(ctx, query,
+	row := tx.QueryRow(ctx, query,
 		newInfoWallet.WalletName,
 		strings.ToUpper(newInfoWallet.Currency),
 		rate,
@@ -260,29 +261,4 @@ func (d *DataStore) GetWalletsQuery(request models.GetWalletsRequest, userID mod
 	}
 
 	return sb.String(), args
-}
-
-func (d *DataStore) DoWithTx(ctx context.Context, fn func(ctx context.Context) error) error {
-	tx, err := d.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-
-	ctx = d.storeTx(ctx, tx)
-
-	defer func() {
-		if err = tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			log.Warn().Err(err).Msg("failed to rollback transaction")
-		}
-	}()
-
-	if err := fn(ctx); err != nil {
-		return fmt.Errorf("error in fn(ctx): %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
 }
