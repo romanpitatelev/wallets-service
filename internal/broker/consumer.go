@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/romanpitatelev/wallets-service/internal/models"
@@ -28,7 +29,23 @@ type userStore interface {
 }
 
 func NewConsumer(store userStore, conf ConsumerConfig) (*Consumer, error) {
-	consumer, err := sarama.NewConsumer([]string{conf.Addr}, nil)
+	var consumer sarama.Consumer
+
+	var err error
+
+	maxRetries := 5
+	delay := time.Second
+
+	for i := range maxRetries {
+		consumer, err = sarama.NewConsumer([]string{conf.Addr}, nil)
+		if err == nil {
+			break
+		}
+
+		log.Warn().Err(err).Msgf("failed to create Kafka consumer (attempt%d/%d), retrying ...", i+1, maxRetries)
+		time.Sleep(delay * 1)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kafka consumer in sarama.NewConsumer(): %w", err)
 	}

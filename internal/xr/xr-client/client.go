@@ -34,7 +34,7 @@ func (c *Client) GetRate(ctx context.Context, from string, to string) (float64, 
 		return 0.0, fmt.Errorf("xr client: failed to create request: %w", err)
 	}
 
-	log.Info().Msgf("this request is from client GetRate function: %v", request)
+	//	log.Info().Msgf("this request is from client GetRate function: %v", request)
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
