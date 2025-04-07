@@ -33,7 +33,7 @@ func NewConsumer(store userStore, conf ConsumerConfig) (*Consumer, error) {
 
 	var err error
 
-	maxRetries := 5
+	maxRetries := 10
 	delay := time.Second
 
 	for i := range maxRetries {

@@ -46,6 +46,7 @@ type Service struct {
 	walletStore walletStore
 	xrClient    xrClient
 	producer    txProducer
+	metrics     *metrics
 }
 
 func New(cfg Config, walletStore walletStore, xrClient xrClient, producer txProducer) *Service {
@@ -54,6 +55,7 @@ func New(cfg Config, walletStore walletStore, xrClient xrClient, producer txProd
 		walletStore: walletStore,
 		xrClient:    xrClient,
 		producer:    producer,
+		metrics:     newMetrics(),
 	}
 }
 
@@ -99,6 +101,18 @@ func (s *Service) GetWallet(ctx context.Context, walletID models.WalletID, userI
 }
 
 func (s *Service) UpdateWallet(ctx context.Context, walletID models.WalletID, newInfoWallet models.WalletUpdate, userID models.UserID) (models.Wallet, error) {
+	timeStart := time.Now()
+
+	var err error
+	defer func() {
+		if err != nil {
+			s.metrics.txFailed.WithLabelValues("update").Inc()
+		} else {
+			s.metrics.txCompleted.WithLabelValues("update").Inc()
+			s.metrics.txDuration.WithLabelValues("update").Observe(time.Since(timeStart).Seconds())
+		}
+	}()
+
 	var updatedWallet models.Wallet
 
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
@@ -155,6 +169,18 @@ func (s *Service) GetAllWallets(ctx context.Context, request models.GetWalletsRe
 }
 
 func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, userID models.UserID) error {
+	timeStart := time.Now()
+
+	var err error
+	defer func() {
+		if err != nil {
+			s.metrics.txFailed.WithLabelValues("deposit").Inc()
+		} else {
+			s.metrics.txCompleted.WithLabelValues("deposit").Inc()
+			s.metrics.txDuration.WithLabelValues("deposit").Observe(time.Since(timeStart).Seconds())
+		}
+	}()
+
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
 		dbWallet, err := s.walletStore.GetWallet(ctx, *transaction.ToWalletID, userID)
 		if err != nil {
@@ -174,19 +200,31 @@ func (s *Service) Deposit(ctx context.Context, transaction models.Transaction, u
 			return fmt.Errorf("failed deposit: %w", err)
 		}
 
+		if err := s.producer.ProduceTxToKafka(transaction); err != nil {
+			return fmt.Errorf("failed to produce deposit transaction: %w", err)
+		}
+
 		return nil
 	}); err != nil {
 		return fmt.Errorf("error in DoWithTX(): %w", err)
-	}
-
-	if err := s.producer.ProduceTxToKafka(transaction); err != nil {
-		return fmt.Errorf("failed to produce deposit transaction: %w", err)
 	}
 
 	return nil
 }
 
 func (s *Service) Withdraw(ctx context.Context, transaction models.Transaction, userID models.UserID) error {
+	timeStart := time.Now()
+
+	var err error
+	defer func() {
+		if err != nil {
+			s.metrics.txFailed.WithLabelValues("withdraw").Inc()
+		} else {
+			s.metrics.txCompleted.WithLabelValues("withdraw").Inc()
+			s.metrics.txDuration.WithLabelValues("withdraw").Observe(time.Since(timeStart).Seconds())
+		}
+	}()
+
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
 		dbWallet, err := s.walletStore.GetWallet(ctx, *transaction.FromWalletID, userID)
 		if err != nil {
@@ -223,6 +261,18 @@ func (s *Service) Withdraw(ctx context.Context, transaction models.Transaction, 
 }
 
 func (s *Service) Transfer(ctx context.Context, transaction models.Transaction, userID models.UserID) error {
+	timeStart := time.Now()
+
+	var err error
+	defer func() {
+		if err != nil {
+			s.metrics.txFailed.WithLabelValues("transafer").Inc()
+		} else {
+			s.metrics.txCompleted.WithLabelValues("transfer").Inc()
+			s.metrics.txDuration.WithLabelValues("transfer").Observe(time.Since(timeStart).Seconds())
+		}
+	}()
+
 	if err := s.walletStore.DoWithTx(ctx, func(ctx context.Context) error {
 		dbFromTransferWallet, err := s.walletStore.GetWallet(ctx, *transaction.FromWalletID, userID)
 		if err != nil {
