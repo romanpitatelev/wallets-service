@@ -36,8 +36,8 @@ Tech Stack Backend
 • Sarama Kafka client
 
 Infrastructure
-• PostgreSQL 15+ 
-• Apache Kafka 3.x 
+• PostgreSQL 
+• Apache Kafka
 • Prometheus
 
 Tooling
