@@ -25,9 +25,9 @@ Features
 - /wallets	    POST	  Create new wallet
 - /wallets/{id}	GET	Get wallet details
 - /wallets/{id}	DELETE	Delete wallet
-- /deposit	POST	Add funds to wallet
-- /withdraw	POST	Remove funds from wallet
-- /transfer	POST	Transfer between wallets
+- /deposit	PUT	Add funds to wallet
+- /withdraw	PUT	Remove funds from wallet
+- /transfer	PUT	Transfer between wallets
 - /metrics	GET	Prometheus metrics endpoint
 
 Tech Stack Backend
