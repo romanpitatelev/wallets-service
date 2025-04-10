@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -60,6 +61,7 @@ var (
 	ErrSameWallet           = errors.New("same wallet transaction")
 	ErrInsufficientFunds    = errors.New("wallet has insufficient funds")
 	ErrInvalidTransaction   = errors.New("invalid wallets' data in transaction")
+	ErrInvalidUUIDFormat    = errors.New("invalid UUID format")
 )
 
 type XRRequest struct {
@@ -142,4 +144,43 @@ func (t *Transaction) Validate() error {
 	}
 
 	return nil
+}
+
+func unmarshalUUID(id *uuid.UUID, data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	parsed, err := uuid.Parse(s)
+	if err != nil {
+		return ErrInvalidUUIDFormat
+	}
+
+	*id = parsed
+	return nil
+}
+
+func (u *UserID) UnmarshalText(data []byte) error {
+	return unmarshalUUID((*uuid.UUID)(u), data)
+}
+
+func (w *WalletID) UnmarshalText(data []byte) error {
+	return unmarshalUUID((*uuid.UUID)(w), data)
+}
+
+func (t *TxID) UnmarshalText(data []byte) error {
+	return unmarshalUUID((*uuid.UUID)(t), data)
+}
+
+func (u UserID) MarshalText() ([]byte, error) {
+	return json.Marshal(uuid.UUID(u).String())
+}
+
+func (w WalletID) MarshalText() ([]byte, error) {
+	return json.Marshal(uuid.UUID(w).String())
+}
+
+func (t TxID) MarshalText() ([]byte, error) {
+	return json.Marshal(uuid.UUID(t).String())
 }
