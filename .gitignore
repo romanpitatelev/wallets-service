@@ -1,6 +1,6 @@
 /postgres-data
-/.idea
-/.env
-/bin
+.idea/
+.env
+c.out
+bin/
 coverage*
-/cmd/data-generator/main.go
