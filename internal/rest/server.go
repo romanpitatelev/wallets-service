@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
 )
 
@@ -24,6 +25,7 @@ type Server struct {
 	service service
 	port    int
 	key     *rsa.PublicKey
+	metrics *metrics
 }
 
 func New(conf Config, service service, key *rsa.PublicKey) *Server {
@@ -35,14 +37,18 @@ func New(conf Config, service service, key *rsa.PublicKey) *Server {
 			Handler:           router,
 			ReadHeaderTimeout: ReadHeaderTimeoutValue * time.Second,
 		},
-		port: conf.Port,
-		key:  key,
+		port:    conf.Port,
+		key:     key,
+		metrics: newMetrics(),
 	}
+
+	router.Get("/metrics", promhttp.Handler().ServeHTTP)
 
 	router.Route("/api", func(r chi.Router) {
 		r.Route("/v1", func(r chi.Router) {
 			r.Use(middleware.Recoverer)
 			r.Use(s.jwtAuth)
+			r.Use(s.metricTrack)
 
 			r.Post("/wallets", s.createWallet)
 			r.Get("/wallets/{walletId}", s.getWallet)

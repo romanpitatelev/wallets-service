@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -33,7 +34,7 @@ func (s *Server) createWallet(w http.ResponseWriter, r *http.Request) {
 	var wallet models.Wallet
 
 	if err := json.NewDecoder(r.Body).Decode(&wallet); err != nil {
-		http.Error(w, "error", http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("%d: %s", http.StatusBadRequest, err), http.StatusBadRequest)
 
 		return
 	}

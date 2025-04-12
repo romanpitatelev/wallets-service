@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,6 +13,20 @@ import (
 	"github.com/romanpitatelev/wallets-service/internal/service/mocks"
 	"github.com/stretchr/testify/require"
 )
+
+//nolint:gochecknoglobals
+var (
+	testMetrics *metrics
+	metricsOnce sync.Once
+)
+
+func getTestMetrics() *metrics {
+	metricsOnce.Do(func() {
+		testMetrics = newMetrics()
+	})
+
+	return testMetrics
+}
 
 //nolint:funlen
 func TestDeposit(t *testing.T) {
@@ -139,6 +154,7 @@ func TestDeposit(t *testing.T) {
 				walletStore: mockWalletStore,
 				xrClient:    mockXRClient,
 				producer:    mockTxProducer,
+				metrics:     getTestMetrics(),
 			}
 
 			err := svc.Deposit(ctx, tt.transaction, userID)
@@ -340,6 +356,7 @@ func TestWithdraw(t *testing.T) {
 				walletStore: mockWalletStore,
 				xrClient:    mockXRClient,
 				producer:    mockTxProducer,
+				metrics:     getTestMetrics(),
 			}
 
 			err := svc.Withdraw(ctx, tt.transaction, userID)
@@ -605,6 +622,7 @@ func TestTransfer(t *testing.T) {
 				walletStore: mockWalletStore,
 				xrClient:    mockXRClient,
 				producer:    mockTxProducer,
+				metrics:     getTestMetrics(),
 			}
 
 			err := svc.Transfer(ctx, tt.transaction, userID)
