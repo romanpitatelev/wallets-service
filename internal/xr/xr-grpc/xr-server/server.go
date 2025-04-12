@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/romanpitatelev/wallets-service/internal/models"
-	xr_grpc "github.com/romanpitatelev/wallets-service/internal/xr/xr-grpc/gen/go"
+	xrgrpc "github.com/romanpitatelev/wallets-service/internal/xr/xr-grpc/gen/go"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -20,7 +20,7 @@ type Config struct {
 type Server struct {
 	grpcServer *grpc.Server
 	cfg        Config
-	xr_grpc.UnimplementedExchangeRateServiceServer
+	xrgrpc.UnimplementedExchangeRateServiceServer
 }
 
 func New(cfg Config) *Server {
@@ -30,7 +30,7 @@ func New(cfg Config) *Server {
 	}
 }
 
-func (s *Server) GetRate(ctx context.Context, req *xr_grpc.RateRequest) (*xr_grpc.RateResponse, error) {
+func (s *Server) GetRate(ctx context.Context, req *xrgrpc.RateRequest) (*xrgrpc.RateResponse, error) {
 	exchangeRatesToRub := map[string]float64{
 		"RUB": 1.0,
 		"USD": 90.0,  //nolint:mnd
@@ -51,13 +51,13 @@ func (s *Server) GetRate(ctx context.Context, req *xr_grpc.RateRequest) (*xr_grp
 
 	rate := fromXR / toXR
 
-	return &xr_grpc.RateResponse{Rate: rate}, nil
+	return &xrgrpc.RateResponse{Rate: rate}, nil
 }
 
 func (s *Server) Run(ctx context.Context) error {
 	log.Info().Msgf("Starting grpc server on %s", s.cfg.ListenAddress)
 
-	xr_grpc.RegisterExchangeRateServiceServer(s.grpcServer, s)
+	xrgrpc.RegisterExchangeRateServiceServer(s.grpcServer, s)
 	reflection.Register(s.grpcServer)
 
 	listener, err := net.Listen("tcp", s.cfg.ListenAddress)

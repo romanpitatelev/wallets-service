@@ -106,7 +106,7 @@ func (c *Config) GetPerformCheckPeriod() time.Duration {
 	return c.env.PerformCheckPeriod
 }
 
-func (c *Config) GetXRHttpServerAddress() string {
+func (c *Config) GetXRHTTPServerAddress() string {
 	return c.env.XRServerAddress
 }
 

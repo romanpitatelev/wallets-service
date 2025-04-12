@@ -61,8 +61,6 @@ func main() {
 		}
 	}()
 
-	//	xrClient := xrhttpclient.New(xrhttpclient.Config{ServerAddress: conf.GetXRHttpServerAddress()})
-
 	xrClient, err := xrgrpcclient.New(xrgrpcclient.Config{Host: conf.GetXRgRPCServerAddress()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to create xr gRPC client")
