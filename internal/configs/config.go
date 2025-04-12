@@ -25,6 +25,7 @@ type EnvSetting struct {
 	StaleWalletDuration time.Duration `env:"STALE_WALLET_DURATION" env-default:"24h" env-description:"The wallet is considered stale after this time duration"`
 	PerformCheckPeriod  time.Duration `env:"PERFORM_CHECK_PERIOD" env-default:"1h" env-description:"Frequency of stale wallet checks"`
 	XRServerAddress     string        `env:"XR_SERVER_ADDRESS" env-default:"http://localhost:2607" env-description:"XR server address"`
+	XRgRPCServerAddress string        `env:"XR_GRPC_SERVER_ADDRESS" env-default:"http://localhost:2608" env-descritption:"XR gRPC server address"`
 }
 
 func findConfigFile() bool {
@@ -105,6 +106,10 @@ func (c *Config) GetPerformCheckPeriod() time.Duration {
 	return c.env.PerformCheckPeriod
 }
 
-func (c *Config) GetXRServerAddress() string {
+func (c *Config) GetXRHttpServerAddress() string {
 	return c.env.XRServerAddress
+}
+
+func (c *Config) GetXRgRPCServerAddress() string {
+	return c.env.XRgRPCServerAddress
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
-	xrclient "github.com/romanpitatelev/wallets-service/internal/xr/xr-client"
+	xrgrpcclient "github.com/romanpitatelev/wallets-service/internal/xr/xr-grpc/xr-client"
 	"github.com/rs/zerolog/log"
 	migrate "github.com/rubenv/sql-migrate"
 	"golang.org/x/sync/errgroup"
@@ -61,7 +61,12 @@ func main() {
 		}
 	}()
 
-	xrClient := xrclient.New(xrclient.Config{ServerAddress: conf.GetXRServerAddress()})
+	//	xrClient := xrhttpclient.New(xrhttpclient.Config{ServerAddress: conf.GetXRHttpServerAddress()})
+
+	xrClient, err := xrgrpcclient.New(xrgrpcclient.Config{Host: conf.GetXRgRPCServerAddress()})
+	if err != nil {
+		log.Panic().Err(err).Msg("failed to create xr gRPC client")
+	}
 
 	svc := service.New(
 		service.Config{

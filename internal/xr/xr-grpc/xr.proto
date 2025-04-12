@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package xr;
+
+option go_package = "github.com/romanpitatelev/wallets-service/internal/xr-grpc";
+
+service ExchangeRateService {
+    rpc GetRate (RateRequest) returns (RateResponse);
+}
+
+message RateRequest {
+    string from_currency = 1;
+    string to_currency = 2;
+}
+
+message RateResponse {
+    double rate = 1;
+}

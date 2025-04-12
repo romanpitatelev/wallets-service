@@ -1,4 +1,4 @@
-package xrclient
+package xrhttpclient
 
 import (
 	"context"

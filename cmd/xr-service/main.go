@@ -2,22 +2,49 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os/signal"
 	"syscall"
 
-	xrserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-server"
+	xrgrpcserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-grpc/xr-server"
+	xrhttpserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-http/xr-server"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
 
-const port = 2607
+const (
+	httpPort = 2607
+	grpcPort = 2608
+)
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	server := xrserver.New(port)
+	httpServer := xrhttpserver.New(httpPort)
+	grpcServer := xrgrpcserver.New(xrgrpcserver.Config{
+		ListenAddress: fmt.Sprintf(":%d", grpcPort),
+	})
 
-	if err := server.Run(ctx); err != nil {
-		log.Error().Err(err).Msg("failed to run xr server")
+	errGr, ctx := errgroup.WithContext(ctx)
+
+	errGr.Go(func() error {
+		if err := httpServer.Run(ctx); err != nil {
+			return fmt.Errorf("failed to run xr http server: %w", err)
+		}
+
+		return nil
+	})
+
+	errGr.Go(func() error {
+		if err := grpcServer.Run(ctx); err != nil {
+			return fmt.Errorf("failed to run xr gRPC server: %w", err)
+		}
+
+		return nil
+	})
+
+	if err := errGr.Wait(); err != nil {
+		log.Panic().Err(err).Msg("failed to wait xr server blocks")
 	}
 }

@@ -1,4 +1,4 @@
-package xrserver
+package xrhttpserver
 
 import (
 	"context"

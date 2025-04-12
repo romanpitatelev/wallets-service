@@ -41,3 +41,13 @@ image_xr:
 
 generate:
 	go generate ./...
+
+
+PROTO_PATH=internal/xr-grpc
+PROTO_FILE=xr.proto
+OUT_DIR=internal/xr-grpc/gen/go
+generate_grpc:
+	protoc --proto_path=$(PROTO_PATH) \
+	--go_out=$(OUT_DIR) --go_opt=paths=source_relative \
+	--go-grpc_out=$(OUT_DIR) --go-grpc_opt=paths=source_relative \
+	$(PROTO_PATH)/$(PROTO_FILE)
