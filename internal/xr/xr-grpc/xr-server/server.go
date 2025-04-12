@@ -42,8 +42,8 @@ func (s *Server) GetRate(ctx context.Context, req *xr_grpc.RateRequest) (*xr_grp
 		"RSD": 0.83,  //nolint:mnd
 	}
 
-	fromXR, fromExists := exchangeRatesToRub[strings.ToUpper(req.FromCurrency)]
-	toXR, toExists := exchangeRatesToRub[strings.ToUpper(req.ToCurrency)]
+	fromXR, fromExists := exchangeRatesToRub[strings.ToUpper(req.GetFromCurrency())]
+	toXR, toExists := exchangeRatesToRub[strings.ToUpper(req.GetToCurrency())]
 
 	if !fromExists || !toExists {
 		return nil, models.ErrWrongCurrency

@@ -39,5 +39,5 @@ func (c *Client) GetRate(ctx context.Context, from string, to string) (float64, 
 		return 0.0, fmt.Errorf("GRPC client error: %w", err)
 	}
 
-	return response.Rate, nil
+	return response.GetRate(), nil
 }
