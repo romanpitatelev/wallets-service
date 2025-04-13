@@ -6,21 +6,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/romanpitatelev/wallets-service/internal/app"
+	"github.com/romanpitatelev/wallets-service/internal/configs"
+	"github.com/romanpitatelev/wallets-service/internal/reporsitory/store"
 	"io"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/romanpitatelev/wallets-service/internal/broker"
-	"github.com/romanpitatelev/wallets-service/internal/models"
-	"github.com/romanpitatelev/wallets-service/internal/rest"
-	"github.com/romanpitatelev/wallets-service/internal/service"
-	"github.com/romanpitatelev/wallets-service/internal/store"
-	xrclient "github.com/romanpitatelev/wallets-service/internal/xr/xr-http/xr-client"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
 	xrserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-http/xr-server"
 	"github.com/rs/zerolog/log"
-	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -37,11 +34,7 @@ type IntegrationTestSuite struct {
 	suite.Suite
 	cancelFunc context.CancelFunc
 	db         *store.DataStore
-	service    *service.Service
-	server     *rest.Server
 	xrServer   *xrserver.Server
-	client     *xrclient.Client
-	txProducer *broker.Producer
 }
 
 func (s *IntegrationTestSuite) SetupSuite() {
@@ -50,24 +43,13 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancelFunc = cancel
 
-	var err error
-
-	s.db, err = store.New(ctx, store.Config{Dsn: pgDSN})
-	s.Require().NoError(err)
-
-	log.Debug().Msg("starting new db ...")
-
-	err = s.db.Migrate(migrate.Up)
-	s.Require().NoError(err)
-
-	log.Debug().Msg("migrations are ready")
-
-	log.Debug().Msg("starting new producer ...")
-
 	time.Sleep(5 * time.Second)
 
-	s.txProducer, err = broker.NewProducer(broker.ProducerConfig{Addr: kafkaAddress})
-	s.Require().NoError(err)
+	cfg := configs.New()
+
+	go func() {
+		_ = app.Run(cfg)
+	}()
 
 	s.xrServer = xrserver.New(xrPort)
 
@@ -76,28 +58,6 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	//nolint:testifylint
 	go func() {
 		err := s.xrServer.Run(ctx)
-		s.Require().NoError(err)
-	}()
-
-	s.client = xrclient.New(xrclient.Config{ServerAddress: xrAddress})
-
-	log.Debug().Msg("xr client is ready")
-
-	s.service = service.New(
-		service.Config{
-			StaleWalletDuration: 0,
-			PerformCheckPeriod:  0,
-		},
-		s.db,
-		s.client,
-		s.txProducer,
-	)
-
-	s.server = rest.New(rest.Config{Port: port}, s.service, rest.GetPublicKey())
-
-	//nolint:testifylint
-	go func() {
-		err = s.server.Run(ctx)
 		s.Require().NoError(err)
 	}()
 
@@ -119,7 +79,7 @@ func TestIntegrationSetupSuite(t *testing.T) {
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
-func (s *IntegrationTestSuite) sendRequest(method, path string, status int, entity, result any, user models.User) {
+func (s *IntegrationTestSuite) sendRequest(method, path string, status int, entity, result any, user entity.User) {
 	body, err := json.Marshal(entity)
 	s.Require().NoError(err)
 
@@ -166,8 +126,8 @@ func (s *IntegrationTestSuite) sendRequest(method, path string, status int, enti
 	s.Require().NoError(err)
 }
 
-func (s *IntegrationTestSuite) getToken(user models.User) string {
-	claims := models.Claims{
+func (s *IntegrationTestSuite) getToken(user entity.User) string {
+	claims := entity.Claims{
 		UserID: user.UserID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),

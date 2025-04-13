@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,7 +29,7 @@ func (s *Server) jwtAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get("Authorization")
 		if header == "" {
-			s.errorUnauthorizedResponse(w, models.ErrInvalidToken)
+			s.errorUnauthorizedResponse(w, entity.ErrInvalidToken)
 
 			return
 		}
@@ -37,60 +37,54 @@ func (s *Server) jwtAuth(next http.Handler) http.Handler {
 		headerParts := strings.Split(header, " ")
 
 		if headerParts[0] != "Bearer" {
-			s.errorUnauthorizedResponse(w, models.ErrInvalidToken)
+			s.errorUnauthorizedResponse(w, entity.ErrInvalidToken)
 
 			return
 		}
 
 		encodedToken := strings.Split(headerParts[1], ".")
 		if len(encodedToken) != tokenLength {
-			s.errorUnauthorizedResponse(w, models.ErrInvalidToken)
+			s.errorUnauthorizedResponse(w, entity.ErrInvalidToken)
 
 			return
 		}
 
-		token, err := jwt.ParseWithClaims(headerParts[1], &models.Claims{}, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(headerParts[1], &entity.Claims{}, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-				return nil, models.ErrInvalidSigningMethod
+				return nil, entity.ErrInvalidSigningMethod
 			}
 
 			return s.key, nil
 		})
 		if err != nil {
-			s.errorUnauthorizedResponse(w, models.ErrInvalidToken)
+			s.errorUnauthorizedResponse(w, entity.ErrInvalidToken)
 
 			return
 		}
 
-		claims, ok := token.Claims.(*models.Claims)
+		claims, ok := token.Claims.(*entity.Claims)
 		if !ok || !token.Valid {
-			s.errorUnauthorizedResponse(w, models.ErrInvalidToken)
+			s.errorUnauthorizedResponse(w, entity.ErrInvalidToken)
 
 			return
 		}
 
 		if claims.ExpiresAt.Before(time.Now()) {
-			s.errorUnauthorizedResponse(w, models.ErrInvalidToken)
+			s.errorUnauthorizedResponse(w, entity.ErrInvalidToken)
 
 			return
 		}
 
-		userInfo := models.UserInfo{
+		userInfo := entity.UserInfo{
 			UserID: claims.UserID,
 			Email:  claims.Email,
 			Role:   claims.Role,
 		}
 
-		r = r.WithContext(context.WithValue(r.Context(), models.UserInfo{}, userInfo))
+		r = r.WithContext(context.WithValue(r.Context(), entity.UserInfo{}, userInfo))
 
 		next.ServeHTTP(w, r)
 	})
-}
-
-func (s *Server) getUserInfo(ctx context.Context) models.UserInfo {
-	val, _ := ctx.Value(models.UserInfo{}).(models.UserInfo)
-
-	return val
 }
 
 func (s *Server) errorUnauthorizedResponse(w http.ResponseWriter, err error) {
@@ -108,10 +102,10 @@ func (s *Server) errorUnauthorizedResponse(w http.ResponseWriter, err error) {
 	}
 }
 
-func NewClaims() *models.Claims {
+func NewClaims() *entity.Claims {
 	tokenTime := time.Now().Add(tokenDuration)
 
-	return &models.Claims{
+	return &entity.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(tokenTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

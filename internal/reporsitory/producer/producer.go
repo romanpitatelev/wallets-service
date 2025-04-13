@@ -1,11 +1,11 @@
-package broker
+package producer
 
 import (
 	"encoding/json"
 	"fmt"
 
 	"github.com/IBM/sarama"
-	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
 )
 
 const transactiontTopic = "transaction_update"
@@ -38,7 +38,7 @@ func (p *Producer) Close() error {
 	return nil
 }
 
-func (p *Producer) ProduceTxToKafka(transaction models.Transaction) error {
+func (p *Producer) ProduceTxToKafka(transaction entity.Transaction) error {
 	bytes, err := json.Marshal(transaction)
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON when sending tx to kafka: %w", err)

@@ -11,11 +11,11 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
 	"github.com/rs/zerolog/log"
 )
 
-func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
+func (d *DataStore) Deposit(ctx context.Context, transaction entity.Transaction, userID entity.UserID, rate float64) error {
 	tx := d.getTXFromCtx(ctx)
 
 	query := `
@@ -32,7 +32,7 @@ WHERE TRUE
 	}
 
 	if result.RowsAffected() == 0 {
-		return models.ErrWalletNotFound
+		return entity.ErrWalletNotFound
 	}
 
 	transaction.Type = "deposit"
@@ -44,7 +44,7 @@ WHERE TRUE
 	return nil
 }
 
-func (d *DataStore) Withdraw(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
+func (d *DataStore) Withdraw(ctx context.Context, transaction entity.Transaction, userID entity.UserID, rate float64) error {
 	tx := d.getTXFromCtx(ctx)
 
 	query := `
@@ -61,7 +61,7 @@ WHERE TRUE
 	}
 
 	if result.RowsAffected() == 0 {
-		return models.ErrWalletNotFound
+		return entity.ErrWalletNotFound
 	}
 
 	transaction.Type = "withdraw"
@@ -73,7 +73,7 @@ WHERE TRUE
 	return nil
 }
 
-func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
+func (d *DataStore) Transfer(ctx context.Context, transaction entity.Transaction, userID entity.UserID, rate float64) error {
 	tx := d.getTXFromCtx(ctx)
 
 	queryFrom := `
@@ -90,7 +90,7 @@ WHERE TRUE
 	}
 
 	if resultFrom.RowsAffected() == 0 {
-		return models.ErrWalletNotFound
+		return entity.ErrWalletNotFound
 	}
 
 	queryTo := `
@@ -107,7 +107,7 @@ WHERE TRUE
 	}
 
 	if resultTo.RowsAffected() == 0 {
-		return models.ErrWalletNotFound
+		return entity.ErrWalletNotFound
 	}
 
 	transaction.Type = "transfer"
@@ -120,14 +120,14 @@ WHERE TRUE
 }
 
 //nolint:lll
-func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID models.WalletID, userID models.UserID) ([]models.Transaction, error) {
+func (d *DataStore) GetTransactions(ctx context.Context, request entity.GetWalletsRequest, walletID entity.WalletID, userID entity.UserID) ([]entity.Transaction, error) {
 	_, err := d.GetWallet(ctx, walletID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract wallet: %w", err)
 	}
 
 	var (
-		transactionsAll []models.Transaction
+		transactionsAll []entity.Transaction
 		rows            pgx.Rows
 	)
 
@@ -140,7 +140,7 @@ func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalle
 	defer rows.Close()
 
 	for rows.Next() {
-		var transaction models.Transaction
+		var transaction entity.Transaction
 
 		err = rows.Scan(
 			&transaction.ID,
@@ -163,13 +163,13 @@ func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalle
 	}
 
 	if len(transactionsAll) == 0 {
-		return []models.Transaction{}, nil
+		return []entity.Transaction{}, nil
 	}
 
 	return transactionsAll, nil
 }
 
-func (d *DataStore) GetTransactionsQuery(request models.GetWalletsRequest, walletID models.WalletID) (string, []any) {
+func (d *DataStore) GetTransactionsQuery(request entity.GetWalletsRequest, walletID entity.WalletID) (string, []any) {
 	var (
 		sb              strings.Builder
 		args            []any
@@ -215,7 +215,7 @@ func (d *DataStore) GetTransactionsQuery(request models.GetWalletsRequest, walle
 	return sb.String(), args
 }
 
-func (d *DataStore) storeTxIntoTable(ctx context.Context, transaction models.Transaction, tx transaction) error {
+func (d *DataStore) storeTxIntoTable(ctx context.Context, transaction entity.Transaction, tx transaction) error {
 	transaction.CommittedAt = time.Now()
 
 	query := `
@@ -246,7 +246,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)`
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation {
 			log.Error().Err(err).Msg("wallet not found: foreign key violation")
 
-			return models.ErrWalletNotFound
+			return entity.ErrWalletNotFound
 		}
 
 		return fmt.Errorf("failed to save transaction history in database: %w", err)

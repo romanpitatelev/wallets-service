@@ -6,7 +6,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
 	xrgrpc "github.com/romanpitatelev/wallets-service/internal/xr/xr-grpc/gen/go"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
@@ -46,7 +46,7 @@ func (s *Server) GetRate(ctx context.Context, req *xrgrpc.RateRequest) (*xrgrpc.
 	toXR, toExists := exchangeRatesToRub[strings.ToUpper(req.GetToCurrency())]
 
 	if !fromExists || !toExists {
-		return nil, models.ErrWrongCurrency
+		return nil, entity.ErrWrongCurrency
 	}
 
 	rate := fromXR / toXR

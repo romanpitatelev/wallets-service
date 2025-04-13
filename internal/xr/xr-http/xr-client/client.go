@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
 	"github.com/rs/zerolog/log"
 )
 
@@ -49,11 +49,11 @@ func (c *Client) GetRate(ctx context.Context, from string, to string) (float64, 
 
 	switch {
 	case response.StatusCode == http.StatusUnprocessableEntity:
-		return 0.0, models.ErrWrongCurrency
+		return 0.0, entity.ErrWrongCurrency
 	case response.StatusCode != http.StatusOK:
 		return 0.0, fmt.Errorf("status code not OK: %w", err)
 	default:
-		var resp models.XRResponse
+		var resp entity.XRResponse
 
 		if err = json.NewDecoder(response.Body).Decode(&resp); err != nil {
 			return 0.0, fmt.Errorf("xr client: error decoding response body: %w", err)

@@ -1,4 +1,4 @@
-package broker
+package producer
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
 	"github.com/rs/zerolog/log"
 )
 
@@ -25,7 +25,7 @@ type ConsumerConfig struct {
 }
 
 type userStore interface {
-	UpsertUser(ctx context.Context, users models.User) error
+	UpsertUser(ctx context.Context, users entity.User) error
 }
 
 func NewConsumer(store userStore, conf ConsumerConfig) (*Consumer, error) {
@@ -42,12 +42,12 @@ func NewConsumer(store userStore, conf ConsumerConfig) (*Consumer, error) {
 			break
 		}
 
-		log.Warn().Err(err).Msgf("failed to create Kafka consumer (attempt%d/%d), retrying ...", i+1, maxRetries)
+		log.Warn().Err(err).Msgf("failed to create Kafka producer (attempt%d/%d), retrying ...", i+1, maxRetries)
 		time.Sleep(delay * 1)
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Kafka consumer in sarama.NewConsumer(): %w", err)
+		return nil, fmt.Errorf("failed to create Kafka producer in sarama.NewConsumer(): %w", err)
 	}
 
 	return &Consumer{
@@ -59,7 +59,7 @@ func NewConsumer(store userStore, conf ConsumerConfig) (*Consumer, error) {
 func (c *Consumer) Run(ctx context.Context) error {
 	partConsumer, err := c.consumer.ConsumePartition(topic, 0, sarama.OffsetNewest)
 	if err != nil {
-		return fmt.Errorf("failed to initiate consumer in Run(): %w", err)
+		return fmt.Errorf("failed to initiate producer in Run(): %w", err)
 	}
 
 	defer func() {
@@ -73,7 +73,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 		case message := <-partConsumer.Messages():
 			log.Trace().Msg("message received")
 
-			var user models.User
+			var user entity.User
 
 			if err := json.Unmarshal(message.Value, &user); err != nil {
 				return fmt.Errorf("failed to unmarshal message in the for loop: %w", err)
@@ -83,7 +83,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 				return fmt.Errorf("failed to upsert user in for loop: %w", err)
 			}
 		case err = <-partConsumer.Errors():
-			return fmt.Errorf("error from consumer in for loop: %w", err)
+			return fmt.Errorf("error from producer in for loop: %w", err)
 		case <-ctx.Done():
 			log.Info().Msg("shutting down from ctx.Done()")
 
@@ -94,7 +94,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 
 func (c *Consumer) Close() error {
 	if err := c.consumer.Close(); err != nil {
-		return fmt.Errorf("failed to close Kafka consumer: %w", err)
+		return fmt.Errorf("failed to close Kafka producer: %w", err)
 	}
 
 	return nil
