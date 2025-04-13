@@ -1,0 +1,499 @@
+openapi: 3.1.0
+info:
+  title: Wallet-service Client API
+  description: API for managing wallets and transactions
+  version: v1
+
+servers:
+  - url: http://localhost:8081/ap1/v1
+    description: Development server
+
+tags:
+  - name: wallets
+    description: Wallet operations
+  - name: transactions
+    description: Transaction operations
+
+paths:
+  /wallets:
+    post:
+      tages: [wallets]
+      description: Create new wallet for the authorized user
+      requestBody:
+        required: true
+        content: 
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WalletCreate'
+      responses:
+        '201':
+          description: Wallet created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+        '400':
+          description: Empty name of the wallet
+          $ref: '#components/responses/BadRequest'
+        '401':
+          description: Invalid token
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: User not found
+          $ref: '#/components/responses/NotFound'
+    get:
+      tags: [wallets]
+      description: Returns a list of wallets with filetring and pagination
+      parameters:
+        - name: authentication
+          in: header
+          required: true
+          description: authentication token
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/Wallet'
+        '401':
+          description: Invalid token
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: User not found
+          $ref: '#/components/responses/NotFound'
+  /wallets/{walletId}:
+    get:
+      tags: [wallets]
+      description: Returns a single wallet by its ID
+      parameters:
+        - name: walletId
+          in: path
+          required: true
+          description: wallet ID
+          schema: 
+            type: string
+        - name: authentication
+          in: header
+          required: true
+          description: authentication token
+          schema: 
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Wallet'
+        '400':
+          description: Invalid wallet ID
+          $ref: '#components/responses/BadRequest'
+        '401':
+          description: Invalid token
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Wallet not found
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: Internal server error
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags: [wallets]
+      description: Update an existing wallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WalletUpdate'
+      parameters:
+        - name: walletId
+          in: path
+          required: true
+          description: wallet ID
+          schema:
+            type: string
+        - name: authentication
+          in: header
+          required: true
+          description: authentication token
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Wallet updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+        '400':
+          description: Invalid wallet
+          $ref: '#components/responses/BadRequest'
+        '401':
+          description: Invalid token
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Wallet not found
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Invalid currency
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          description: Internal server error
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [wallets]
+      description: Delete a wallet by ID
+      parameters:
+        - name: walletId
+          in: path
+          required: true
+          description: wallet ID
+          schema:
+            type: string
+        - name: authentication
+          in: header
+          required: true
+          description: authentication token
+          schema:
+            type: string
+      responses:
+        '200': 
+          description: Wallet deleted successfully
+          content: {}
+        '400': 
+          description: Wallet has non-zero balance or invalid wallet ID
+          $ref: '#components/responses/BadRequest'
+        '401':
+          description: Invalid token
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Wallet not found
+          $ref: '#/components/responses/NotFound'
+        '500':
+          description: Internal server error
+          $ref: '#/components/responses/InternalServerError'
+  /wallets/{walletId}/deposit:
+    put:
+      tags: [transactions]
+      description: Deposit funds to the specified wallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Transaction'
+      parameters:
+        - name: walletId
+          in: path
+          required: true
+          description: wallet ID
+          schema:
+            type: string
+        - name: authentication
+          in: header
+          required: true
+          description: authentication token
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deposit successful
+          content: {}
+        '400': 
+          description: Transaction has not passed validation chaeck
+          $ref: '#components/responses/BadRequest'  
+        '401':
+          description: Invalid token
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Wallet not found
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Invalid currency
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          description: Internal server error
+          $ref: '#/components/responses/InternalServerError'
+  /wallets/{walletId}/withdrawal:
+    put:
+      tags: [transactions]
+      description: Withdraw funds from the specified wallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Transaction'
+      parameters:
+        - name: walletId
+          in: path
+          required: true
+          description: wallet ID
+          schema:
+            type: string
+        - name: authentication
+          in: header
+          required: true
+          description: authentication token
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deposit successful
+          content: {}
+        '400': 
+          description: Transaction has not passed validation chaeck
+          $ref: '#components/responses/BadRequest'
+        '401':
+          description: Invalid token
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Wallet not found
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Insufficient funds
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Invalid currency
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          description: Internal server error
+          $ref: '#/components/responses/InternalServerError'
+  /wallets/{walletId}/transafer:
+    put:
+      tags: [transactions]
+      description: Transfer funds between wallets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Transaction'
+      parameters:
+        - name: walletId
+          in: path
+          required: true
+          description: wallet ID
+          schema:
+            type: string
+        - name: authentication
+          in: header
+          required: true
+          description: authentication token
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transfer successful
+          content: {}
+        '400': 
+          description: Transaction has not passed validation chaeck
+          $ref: '#components/responses/BadRequest'
+        '401':
+          description: Invalid token
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Wallet not found
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Insufficient funds
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Invalid currency
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          description: Internal server error
+          $ref: '#/components/responses/InternalServerError'
+  /wallets/{walletId}/transactions:
+    get:
+      tags: [transactions]
+      description: Returns a list of transactions for the specified wallet
+      parameters:
+        - name: authentication
+          in: header
+          required: true
+          description: authentication token
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/Transaction'
+        '400':
+          description: Invalid wallet
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid token
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Wallet not found
+          $ref: '#/components/responses/NotFound'    
+          
+components:
+  schemas:
+    Wallet:
+      type: object
+      properties:
+        walletId:
+          type: string
+          formuat: uuid
+          example: "20b6abd2-bb57-4331-8538-2c3408cf8b1e"
+        userId:
+          type: string
+          formuat: uuid
+          example: "20b6abd2-bb57-4331-8538-2c3408cf8b1e"
+        walletName:
+          type: string
+          example: "WalletOne"
+        balance:
+          type: number
+          format: float
+          example: 53.78
+        currency:
+          type: string
+          enum:
+            - "RUB"
+            - "USD"
+            - "EUR"
+            - "CNY"
+            - "CHF"
+            - "GBP"
+            - "KZT"
+            - "RSD"
+        createdAt:
+          type: string
+          format: date-time 
+          example: 2024-03-25 09:16:59
+        updatedAt:
+          type: string
+          format: date-time 
+          example: 2024-04-26 03:12:39
+        deletedAt:
+          type: string
+          format: date-time 
+          example: 2024-03-25 09:16:59
+        active:
+          type: boolean
+          example: false
+      required:
+        - walletId
+        - userId
+        - walletName
+        - balance
+        - currency
+        - createdAt
+        - updatedAt
+    WalletCreate:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+          example: "20b6abd2-bb57-4331-8538-2c3408cf8b1e"
+        walletName:
+          type: string
+          example: "WalletOne"
+        currency:
+          type: string
+          enum:
+            - "RUB"
+            - "USD"
+            - "EUR"
+            - "CNY"
+            - "CHF"
+            - "GBP"
+            - "KZT"
+            - "RSD"
+      required:
+        - userId
+        - currency      
+  Transaction:
+    type: object
+    properties:
+      transactionId:
+        type: string
+        format: uuid
+        example: "20b6abd2-bb57-4331-8538-2c3408cf8b1e"
+      type: 
+        type: string
+        example: "deposit"
+      toWalletId:
+        type: string
+        format: uuid
+        nullable: true
+        example: "20b6abd2-bb57-4331-8538-2c3408cf8b1e"
+      fromWalletId:
+        type: string
+        format: uuid
+        nullable: true
+        example: "20b6abd2-bb57-4331-8538-2c3408cf8b1e"
+      amount:
+        type: number
+        format: float
+        example: 100.5
+      currency:
+          type: string
+          enum:
+            - "RUB"
+            - "USD"
+            - "EUR"
+            - "CNY"
+            - "CHF"
+            - "GBP"
+            - "KZT"
+            - "RSD"
+          example: "RUB"
+      committedAt:
+        type: string
+        format: date-time
+        example: 2024-03-25 09:16:59
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []
+
+
+
+
+
+
+        
+        
+
+
+
+
+
+        
+
+
+
+
+        
+
+              
+
+
+          
+        
+
+
+
+
+
+      
+
