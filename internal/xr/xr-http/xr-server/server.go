@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
-	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
 	"github.com/rs/zerolog/log"
 )
 
@@ -59,7 +59,7 @@ func (s *Server) Run(ctx context.Context) error {
 func (s *Server) getExchangeRate(w http.ResponseWriter, r *http.Request) {
 	queryParams := r.URL.Query()
 
-	xr := models.XRRequest{
+	xr := entity.XRRequest{
 		FromCurrency: queryParams.Get("from"),
 		ToCurrency:   queryParams.Get("to"),
 	}
@@ -79,14 +79,14 @@ func (s *Server) getExchangeRate(w http.ResponseWriter, r *http.Request) {
 	toXR, toExists := exchangeRatesToRub[strings.ToUpper(xr.ToCurrency)]
 
 	if !fromExists || !toExists {
-		s.errorResponse(w, "error getting exchange rate", models.ErrWrongCurrency)
+		s.errorResponse(w, "error getting exchange rate", entity.ErrWrongCurrency)
 
 		return
 	}
 
 	rate := fromXR / toXR
 
-	response := models.XRResponse{Rate: rate}
+	response := entity.XRResponse{Rate: rate}
 
 	s.okResponse(w, http.StatusOK, response)
 }
@@ -94,7 +94,7 @@ func (s *Server) getExchangeRate(w http.ResponseWriter, r *http.Request) {
 func (s *Server) errorResponse(w http.ResponseWriter, errorText string, err error) {
 	statusCode := http.StatusInternalServerError
 
-	if errors.Is(err, models.ErrWrongCurrency) {
+	if errors.Is(err, entity.ErrWrongCurrency) {
 		statusCode = http.StatusUnprocessableEntity
 	}
 

@@ -6,12 +6,11 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
 	"github.com/rs/zerolog/log"
 	migrate "github.com/rubenv/sql-migrate"
 )
@@ -28,8 +27,8 @@ type Config struct {
 	Dsn string
 }
 
-func New(ctx context.Context, conf Config) (*DataStore, error) {
-	pool, err := pgxpool.New(ctx, conf.Dsn)
+func New(ctx context.Context, cfg Config) (*DataStore, error) {
+	pool, err := pgxpool.New(ctx, cfg.Dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -42,7 +41,7 @@ func New(ctx context.Context, conf Config) (*DataStore, error) {
 
 	return &DataStore{
 		pool: pool,
-		dsn:  conf.Dsn,
+		dsn:  cfg.Dsn,
 	}, nil
 }
 
@@ -98,7 +97,7 @@ func (d *DataStore) Migrate(direction migrate.MigrationDirection) error {
 	return nil
 }
 
-func (d *DataStore) UpsertUser(ctx context.Context, users models.User) error {
+func (d *DataStore) UpsertUser(ctx context.Context, users entity.User) error {
 	query := `
 INSERT INTO users (user_id, deleted_at)
 VALUES ($1, $2)
@@ -124,27 +123,13 @@ func (d *DataStore) Truncate(ctx context.Context, tables ...string) error {
 	return nil
 }
 
-func (d *DataStore) ArchiveStaleWallets(ctx context.Context, checkPeriod time.Duration) error {
-	query := fmt.Sprintf(`UPDATE wallets
-				SET active = false
-				WHERE balance = 0
-					AND active = true 
-					AND updated_at < NOW() - INTERVAL '%d hours'`, int(checkPeriod.Hours()))
-
-	_, err := d.pool.Exec(ctx, query)
+func (d *DataStore) Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error) {
+	cmdTag, err := d.pool.Exec(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("error archiving wallet: %w", err)
+		return pgconn.CommandTag{}, fmt.Errorf("error executing query %s: %w", query, err)
 	}
 
-	return nil
-}
-
-func (d *DataStore) Exec(ctx context.Context, query string, args ...any) error {
-	if _, err := d.pool.Exec(ctx, query, args...); err != nil {
-		return fmt.Errorf("error executing query %s: %w", query, err)
-	}
-
-	return nil
+	return cmdTag, nil
 }
 
 func (d *DataStore) DoWithTx(ctx context.Context, fn func(ctx context.Context) error) error {
@@ -181,13 +166,26 @@ func (d *DataStore) storeTx(ctx context.Context, tx pgx.Tx) context.Context {
 	return context.WithValue(ctx, ctxKey, tx)
 }
 
-type transaction interface {
+func (d *DataStore) Query(ctx context.Context, sql string, arguments ...any) (pgx.Rows, error) {
+	res, err := d.pool.Query(ctx, sql, arguments...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query %s: %w", sql, err)
+	}
+
+	return res, nil
+}
+
+func (d *DataStore) QueryRow(ctx context.Context, sql string, arguments ...any) pgx.Row {
+	return d.pool.QueryRow(ctx, sql, arguments...)
+}
+
+type Transaction interface {
 	Exec(ctx context.Context, sql string, arguments ...any) (commandTag pgconn.CommandTag, err error)
 	Query(ctx context.Context, sql string, arguments ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, arguments ...any) pgx.Row
 }
 
-func (d *DataStore) getTXFromCtx(ctx context.Context) transaction {
+func (d *DataStore) GetTXFromCtx(ctx context.Context) Transaction {
 	tx, ok := ctx.Value(ctxKey).(pgx.Tx)
 	if !ok {
 		return d.pool

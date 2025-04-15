@@ -1,4 +1,4 @@
-package store
+package transactionsrepo
 
 import (
 	"context"
@@ -11,12 +11,36 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
+	"github.com/romanpitatelev/wallets-service/internal/repository/store"
 	"github.com/rs/zerolog/log"
 )
 
-func (d *DataStore) Deposit(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
-	tx := d.getTXFromCtx(ctx)
+type database interface {
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, arguments ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, arguments ...any) pgx.Row
+	GetTXFromCtx(ctx context.Context) store.Transaction
+}
+
+type walletGetter interface {
+	GetWallet(ctx context.Context, walletID entity.WalletID, userID entity.UserID) (entity.Wallet, error)
+}
+
+type Repo struct {
+	db           database
+	walletGetter walletGetter
+}
+
+func New(db database, walletGetter walletGetter) *Repo {
+	return &Repo{
+		db:           db,
+		walletGetter: walletGetter,
+	}
+}
+
+func (r *Repo) Deposit(ctx context.Context, transaction entity.Transaction, userID entity.UserID, rate float64) error {
+	tx := r.db.GetTXFromCtx(ctx)
 
 	query := `
 UPDATE wallets
@@ -32,20 +56,20 @@ WHERE TRUE
 	}
 
 	if result.RowsAffected() == 0 {
-		return models.ErrWalletNotFound
+		return entity.ErrWalletNotFound
 	}
 
 	transaction.Type = "deposit"
 
-	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
+	if err := r.storeTxIntoTable(ctx, transaction, tx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)
 	}
 
 	return nil
 }
 
-func (d *DataStore) Withdraw(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
-	tx := d.getTXFromCtx(ctx)
+func (r *Repo) Withdraw(ctx context.Context, transaction entity.Transaction, userID entity.UserID, rate float64) error {
+	tx := r.db.GetTXFromCtx(ctx)
 
 	query := `
 UPDATE wallets
@@ -61,20 +85,20 @@ WHERE TRUE
 	}
 
 	if result.RowsAffected() == 0 {
-		return models.ErrWalletNotFound
+		return entity.ErrWalletNotFound
 	}
 
 	transaction.Type = "withdraw"
 
-	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
+	if err := r.storeTxIntoTable(ctx, transaction, tx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)
 	}
 
 	return nil
 }
 
-func (d *DataStore) Transfer(ctx context.Context, transaction models.Transaction, userID models.UserID, rate float64) error {
-	tx := d.getTXFromCtx(ctx)
+func (r *Repo) Transfer(ctx context.Context, transaction entity.Transaction, userID entity.UserID, rate float64) error {
+	tx := r.db.GetTXFromCtx(ctx)
 
 	queryFrom := `
 UPDATE wallets
@@ -90,7 +114,7 @@ WHERE TRUE
 	}
 
 	if resultFrom.RowsAffected() == 0 {
-		return models.ErrWalletNotFound
+		return entity.ErrWalletNotFound
 	}
 
 	queryTo := `
@@ -107,12 +131,12 @@ WHERE TRUE
 	}
 
 	if resultTo.RowsAffected() == 0 {
-		return models.ErrWalletNotFound
+		return entity.ErrWalletNotFound
 	}
 
 	transaction.Type = "transfer"
 
-	if err := d.storeTxIntoTable(ctx, transaction, tx); err != nil {
+	if err := r.storeTxIntoTable(ctx, transaction, tx); err != nil {
 		return fmt.Errorf("failed to store transaction into database: %w", err)
 	}
 
@@ -120,27 +144,27 @@ WHERE TRUE
 }
 
 //nolint:lll
-func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalletsRequest, walletID models.WalletID, userID models.UserID) ([]models.Transaction, error) {
-	_, err := d.GetWallet(ctx, walletID, userID)
+func (r *Repo) GetTransactions(ctx context.Context, request entity.GetWalletsRequest, walletID entity.WalletID, userID entity.UserID) ([]entity.Transaction, error) {
+	_, err := r.walletGetter.GetWallet(ctx, walletID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract wallet: %w", err)
 	}
 
 	var (
-		transactionsAll []models.Transaction
+		transactionsAll []entity.Transaction
 		rows            pgx.Rows
 	)
 
-	query, args := d.GetTransactionsQuery(request, walletID)
+	query, args := r.GetTransactionsQuery(request, walletID)
 
-	if rows, err = d.pool.Query(ctx, query, args...); err != nil {
+	if rows, err = r.db.Query(ctx, query, args...); err != nil {
 		return nil, fmt.Errorf("error getting all the transactions: %w", err)
 	}
 
 	defer rows.Close()
 
 	for rows.Next() {
-		var transaction models.Transaction
+		var transaction entity.Transaction
 
 		err = rows.Scan(
 			&transaction.ID,
@@ -163,13 +187,13 @@ func (d *DataStore) GetTransactions(ctx context.Context, request models.GetWalle
 	}
 
 	if len(transactionsAll) == 0 {
-		return []models.Transaction{}, nil
+		return []entity.Transaction{}, nil
 	}
 
 	return transactionsAll, nil
 }
 
-func (d *DataStore) GetTransactionsQuery(request models.GetWalletsRequest, walletID models.WalletID) (string, []any) {
+func (r *Repo) GetTransactionsQuery(request entity.GetWalletsRequest, walletID entity.WalletID) (string, []any) {
 	var (
 		sb              strings.Builder
 		args            []any
@@ -215,7 +239,7 @@ func (d *DataStore) GetTransactionsQuery(request models.GetWalletsRequest, walle
 	return sb.String(), args
 }
 
-func (d *DataStore) storeTxIntoTable(ctx context.Context, transaction models.Transaction, tx transaction) error {
+func (r *Repo) storeTxIntoTable(ctx context.Context, transaction entity.Transaction, tx store.Transaction) error {
 	transaction.CommittedAt = time.Now()
 
 	query := `
@@ -246,7 +270,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)`
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation {
 			log.Error().Err(err).Msg("wallet not found: foreign key violation")
 
-			return models.ErrWalletNotFound
+			return entity.ErrWalletNotFound
 		}
 
 		return fmt.Errorf("failed to save transaction history in database: %w", err)

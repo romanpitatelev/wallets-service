@@ -1,4 +1,4 @@
-package broker
+package consumer
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
 	"github.com/rs/zerolog/log"
 )
 
@@ -25,10 +25,10 @@ type ConsumerConfig struct {
 }
 
 type userStore interface {
-	UpsertUser(ctx context.Context, users models.User) error
+	UpsertUser(ctx context.Context, users entity.User) error
 }
 
-func NewConsumer(store userStore, conf ConsumerConfig) (*Consumer, error) {
+func New(store userStore, conf ConsumerConfig) (*Consumer, error) {
 	var consumer sarama.Consumer
 
 	var err error
@@ -73,7 +73,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 		case message := <-partConsumer.Messages():
 			log.Trace().Msg("message received")
 
-			var user models.User
+			var user entity.User
 
 			if err := json.Unmarshal(message.Value, &user); err != nil {
 				return fmt.Errorf("failed to unmarshal message in the for loop: %w", err)

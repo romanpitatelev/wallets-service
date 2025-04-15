@@ -11,7 +11,7 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
 	"github.com/goombaio/namegenerator"
-	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
 	"github.com/rs/zerolog/log"
 )
 
@@ -30,7 +30,7 @@ const (
 )
 
 type User struct {
-	UserID    models.UserID `json:"userid"`
+	UserID    entity.UserID `json:"userid"`
 	FirstName string        `json:"firstName"`
 	LastName  string        `json:"lastName"`
 	Gender    string        `json:"gender"`
@@ -98,7 +98,7 @@ func generateUser() User {
 		age = defaultAge
 	}
 
-	userID := models.UserID(uuid.New())
+	userID := entity.UserID(uuid.New())
 
 	deleted, err := randomDeleted()
 	if err != nil {
