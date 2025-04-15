@@ -28,7 +28,7 @@ type userStore interface {
 	UpsertUser(ctx context.Context, users entity.User) error
 }
 
-func New(store userStore, conf ConsumerConfig) (*Consumer, error) {
+func New(store userStore, cfg ConsumerConfig) (*Consumer, error) {
 	var consumer sarama.Consumer
 
 	var err error
@@ -37,7 +37,7 @@ func New(store userStore, conf ConsumerConfig) (*Consumer, error) {
 	delay := time.Second
 
 	for i := range maxRetries {
-		consumer, err = sarama.NewConsumer([]string{conf.Addr}, nil)
+		consumer, err = sarama.NewConsumer([]string{cfg.Addr}, nil)
 		if err == nil {
 			break
 		}

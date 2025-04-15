@@ -12,12 +12,15 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/romanpitatelev/wallets-service/internal/broker"
-	"github.com/romanpitatelev/wallets-service/internal/models"
-	"github.com/romanpitatelev/wallets-service/internal/rest"
-	"github.com/romanpitatelev/wallets-service/internal/service"
-	"github.com/romanpitatelev/wallets-service/internal/store"
-	xrclient "github.com/romanpitatelev/wallets-service/internal/xr/xr-http/xr-client"
+	"github.com/romanpitatelev/wallets-service/internal/controller/rest"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
+	"github.com/romanpitatelev/wallets-service/internal/repository/producer"
+	"github.com/romanpitatelev/wallets-service/internal/repository/store"
+	transactionsrepo "github.com/romanpitatelev/wallets-service/internal/repository/transactions-repo"
+	walletsrepo "github.com/romanpitatelev/wallets-service/internal/repository/wallets-repo"
+	xrgrpcclient "github.com/romanpitatelev/wallets-service/internal/repository/xr-grpc-client"
+	transactionsservice "github.com/romanpitatelev/wallets-service/internal/usecase/transactions-service"
+	walletsservice "github.com/romanpitatelev/wallets-service/internal/usecase/wallets-service"
 	xrserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-http/xr-server"
 	"github.com/rs/zerolog/log"
 	migrate "github.com/rubenv/sql-migrate"
@@ -25,23 +28,27 @@ import (
 )
 
 const (
-	pgDSN        = "postgresql://postgres:my_pass@localhost:5432/wallets_db"
-	port         = 5003
-	walletPath   = `/api/v1/wallets`
-	xrPort       = 2607
-	xrAddress    = "http://localhost:2607"
-	kafkaAddress = "localhost:9094"
+	pgDSN         = "postgresql://postgres:my_pass@localhost:5432/wallets_db"
+	port          = 5003
+	walletPath    = `/api/v1/wallets`
+	xrPort        = 2607
+	xrAddress     = "http://localhost:2607"
+	xrgRPCAddress = "http://localhost:2608"
+	kafkaAddress  = "localhost:9094"
 )
 
 type IntegrationTestSuite struct {
 	suite.Suite
-	cancelFunc context.CancelFunc
-	db         *store.DataStore
-	service    *service.Service
-	server     *rest.Server
-	xrServer   *xrserver.Server
-	client     *xrclient.Client
-	txProducer *broker.Producer
+	cancelFunc          context.CancelFunc
+	db                  *store.DataStore
+	walletsrepo         *walletsrepo.Repo
+	transactionsrepo    *transactionsrepo.Repo
+	walletsservice      *walletsservice.Service
+	transactionsservice *transactionsservice.Service
+	server              *rest.Server
+	xrServer            *xrserver.Server
+	xrRepo              *xrgrpcclient.Client
+	txProducer          *producer.Producer
 }
 
 func (s *IntegrationTestSuite) SetupSuite() {
@@ -62,16 +69,19 @@ func (s *IntegrationTestSuite) SetupSuite() {
 
 	log.Debug().Msg("migrations are ready")
 
+	s.walletsrepo = walletsrepo.New(s.db)
+	s.transactionsrepo = transactionsrepo.New(s.db, s.walletsrepo)
+
 	log.Debug().Msg("starting new producer ...")
 
 	time.Sleep(5 * time.Second)
 
-	s.txProducer, err = broker.NewProducer(broker.ProducerConfig{Addr: kafkaAddress})
+	s.txProducer, err = producer.New(producer.ProducerConfig{Addr: kafkaAddress})
 	s.Require().NoError(err)
 
 	s.xrServer = xrserver.New(xrPort)
 
-	log.Debug().Msg("xr server is compiled")
+	log.Debug().Msg("xr server is ready")
 
 	//nolint:testifylint
 	go func() {
@@ -79,21 +89,30 @@ func (s *IntegrationTestSuite) SetupSuite() {
 		s.Require().NoError(err)
 	}()
 
-	s.client = xrclient.New(xrclient.Config{ServerAddress: xrAddress})
+	s.xrRepo, err = xrgrpcclient.New(xrgrpcclient.Config{Host: xrgRPCAddress})
+	s.Require().NoError(err)
 
-	log.Debug().Msg("xr client is ready")
+	log.Debug().Msg("xr grpc client is ready")
 
-	s.service = service.New(
-		service.Config{
+	s.walletsservice = walletsservice.New(
+		walletsservice.Config{
 			StaleWalletDuration: 0,
 			PerformCheckPeriod:  0,
 		},
+		s.walletsrepo,
+		s.xrRepo,
 		s.db,
-		s.client,
+	)
+
+	s.transactionsservice = transactionsservice.New(
+		s.walletsrepo,
+		s.transactionsrepo,
+		s.xrRepo,
+		s.db,
 		s.txProducer,
 	)
 
-	s.server = rest.New(rest.Config{Port: port}, s.service, rest.GetPublicKey())
+	s.server = rest.New(rest.Config{Port: port}, s.walletsservice, s.transactionsservice, rest.GetPublicKey())
 
 	//nolint:testifylint
 	go func() {
@@ -119,7 +138,7 @@ func TestIntegrationSetupSuite(t *testing.T) {
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
-func (s *IntegrationTestSuite) sendRequest(method, path string, status int, entity, result any, user models.User) {
+func (s *IntegrationTestSuite) sendRequest(method, path string, status int, entity, result any, user entity.User) {
 	body, err := json.Marshal(entity)
 	s.Require().NoError(err)
 
@@ -166,8 +185,8 @@ func (s *IntegrationTestSuite) sendRequest(method, path string, status int, enti
 	s.Require().NoError(err)
 }
 
-func (s *IntegrationTestSuite) getToken(user models.User) string {
-	claims := models.Claims{
+func (s *IntegrationTestSuite) getToken(user entity.User) string {
+	claims := entity.Claims{
 		UserID: user.UserID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),

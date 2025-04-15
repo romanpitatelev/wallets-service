@@ -41,7 +41,7 @@ func Run(cfg *configs.Config) error {
 	walletsRepo := walletsrepo.New(db)
 	transactionsRepo := transactionsrepo.New(db, walletsRepo)
 
-	kafkaRepo, err := consumer.New(consumer.ConsumerConfig{Addr: cfg.GetKafkaAddress()})
+	kafkaRepo, err := consumer.New(db, consumer.ConsumerConfig{Addr: cfg.GetKafkaAddress()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to create kafka consumer")
 	}

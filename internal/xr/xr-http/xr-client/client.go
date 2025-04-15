@@ -6,28 +6,28 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
 	"github.com/rs/zerolog/log"
 )
 
 const route = "/api/v1/xr?from=%v&to=%v"
 
 type Client struct {
-	conf Config
+	cfg Config
 }
 
 type Config struct {
-	ServerAddress string
+	Host string
 }
 
-func New(conf Config) *Client {
+func New(cfg Config) *Client {
 	return &Client{
-		conf: conf,
+		cfg: cfg,
 	}
 }
 
 func (c *Client) GetRate(ctx context.Context, from string, to string) (float64, error) {
-	url := c.conf.ServerAddress + fmt.Sprintf(route, from, to)
+	url := c.cfg.Host + fmt.Sprintf(route, from, to)
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -49,11 +49,11 @@ func (c *Client) GetRate(ctx context.Context, from string, to string) (float64, 
 
 	switch {
 	case response.StatusCode == http.StatusUnprocessableEntity:
-		return 0.0, models.ErrWrongCurrency
+		return 0.0, entity.ErrWrongCurrency
 	case response.StatusCode != http.StatusOK:
 		return 0.0, fmt.Errorf("status code not OK: %w", err)
 	default:
-		var resp models.XRResponse
+		var resp entity.XRResponse
 
 		if err = json.NewDecoder(response.Body).Decode(&resp); err != nil {
 			return 0.0, fmt.Errorf("xr client: error decoding response body: %w", err)
