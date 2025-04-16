@@ -13,6 +13,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/romanpitatelev/wallets-service/internal/controller/rest"
+	transactionshandler "github.com/romanpitatelev/wallets-service/internal/controller/rest/transactions-handler"
+	walletshandler "github.com/romanpitatelev/wallets-service/internal/controller/rest/wallets-handler"
 	"github.com/romanpitatelev/wallets-service/internal/entity"
 	"github.com/romanpitatelev/wallets-service/internal/repository/producer"
 	"github.com/romanpitatelev/wallets-service/internal/repository/store"
@@ -30,7 +32,7 @@ import (
 const (
 	pgDSN         = "postgresql://postgres:my_pass@localhost:5432/wallets_db"
 	port          = 5003
-	walletPath    = `/api/v1/wallets`
+	walletPath    = "/api/v1/wallets"
 	xrPort        = 2607
 	xrAddress     = "http://localhost:2607"
 	xrgRPCAddress = "http://localhost:2608"
@@ -45,6 +47,8 @@ type IntegrationTestSuite struct {
 	transactionsrepo    *transactionsrepo.Repo
 	walletsservice      *walletsservice.Service
 	transactionsservice *transactionsservice.Service
+	walletshandler      *walletshandler.Handler
+	transactionshandler *transactionshandler.Handler
 	server              *rest.Server
 	xrServer            *xrserver.Server
 	xrRepo              *xrgrpcclient.Client
@@ -112,7 +116,10 @@ func (s *IntegrationTestSuite) SetupSuite() {
 		s.txProducer,
 	)
 
-	s.server = rest.New(rest.Config{Port: port}, s.walletsservice, s.transactionsservice, rest.GetPublicKey())
+	s.walletshandler = walletshandler.New(s.walletsservice)
+	s.transactionshandler = transactionshandler.New(s.transactionsservice)
+
+	s.server = rest.New(rest.Config{Port: port}, s.walletshandler, s.transactionshandler, rest.GetPublicKey())
 
 	//nolint:testifylint
 	go func() {

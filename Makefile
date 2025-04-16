@@ -1,6 +1,6 @@
-PROTO_PATH=internal/xr-grpc
+PROTO_PATH=api/grpc/xr/v1
 PROTO_FILE=xr.proto
-OUT_DIR=internal/xr-grpc/gen/go
+OUT_DIR=internal/xr/xr-grpc/gen/go
 
 run:
 	@echo 'Running the project ...'
@@ -21,7 +21,8 @@ up:
 	docker compose up -d
 
 down:
-	docker compose down
+	docker compose down --remove-orphans --timeout 2
+	docker system prune -f --volumes
 
 tidy:
 	go mod tidy

@@ -129,7 +129,7 @@ const file_xr_proto_rawDesc = "" +
 	"\fRateResponse\x12\x12\n" +
 	"\x04rate\x18\x01 \x01(\x01R\x04rate2C\n" +
 	"\x13ExchangeRateService\x12,\n" +
-	"\aGetRate\x12\x0f.xr.RateRequest\x1a\x10.xr.RateResponseB<Z:github.com/romanpitatelev/wallets-service/internal/xr-grpcb\x06proto3"
+	"\aGetRate\x12\x0f.xr.RateRequest\x1a\x10.xr.RateResponseB?Z=github.com/romanpitatelev/wallets-service/internal/xr/xr-grpcb\x06proto3"
 
 var (
 	file_xr_proto_rawDescOnce sync.Once

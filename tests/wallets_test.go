@@ -8,7 +8,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/romanpitatelev/wallets-service/internal/models"
+	"github.com/romanpitatelev/wallets-service/internal/entity"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -22,14 +23,14 @@ type Currency struct {
 }
 
 //nolint:gochecknoglobals
-var existingUser = models.User{
-	UserID: models.UserID(uuid.New()),
+var existingUser = entity.User{
+	UserID: entity.UserID(uuid.New()),
 }
 
 func (s *IntegrationTestSuite) TestCreateWallet() {
-	wallet := models.Wallet{
-		WalletID:   models.WalletID(uuid.New()),
-		UserID:     models.UserID(uuid.New()),
+	wallet := entity.Wallet{
+		WalletID:   entity.WalletID(uuid.New()),
+		UserID:     entity.UserID(uuid.New()),
 		WalletName: "testWalletPost",
 		Currency:   "RSD",
 	}
@@ -44,7 +45,7 @@ func (s *IntegrationTestSuite) TestCreateWallet() {
 
 		wallet.UserID = existingUser.UserID
 
-		var createdWallet models.Wallet
+		var createdWallet entity.Wallet
 
 		s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &wallet, &createdWallet, existingUser)
 
@@ -59,8 +60,8 @@ func (s *IntegrationTestSuite) TestCreateWallet() {
 		err := s.db.UpsertUser(context.Background(), existingUser)
 		s.Require().NoError(err)
 
-		otherUser := models.User{
-			UserID: models.UserID(uuid.New()),
+		otherUser := entity.User{
+			UserID: entity.UserID(uuid.New()),
 		}
 
 		err = s.db.UpsertUser(context.Background(), otherUser)
@@ -73,8 +74,8 @@ func (s *IntegrationTestSuite) TestCreateWallet() {
 }
 
 func (s *IntegrationTestSuite) TestGetWallet() {
-	wallet := models.Wallet{
-		WalletID:   models.WalletID(uuid.New()),
+	wallet := entity.Wallet{
+		WalletID:   entity.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "testWalletGet",
 		Balance:    200.0,
@@ -84,13 +85,13 @@ func (s *IntegrationTestSuite) TestGetWallet() {
 	err := s.db.UpsertUser(context.Background(), existingUser)
 	s.Require().NoError(err)
 
-	var createdWallet models.Wallet
+	var createdWallet entity.Wallet
 
 	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &wallet, &createdWallet, existingUser)
 
 	s.Run("user not found", func() {
-		nonExistentUser := models.User{
-			UserID: models.UserID(uuid.New()),
+		nonExistentUser := entity.User{
+			UserID: entity.UserID(uuid.New()),
 		}
 
 		uuidString := uuid.UUID(wallet.WalletID).String()
@@ -120,8 +121,8 @@ func (s *IntegrationTestSuite) TestGetWallet() {
 	})
 
 	s.Run("wallet does not belong to the user", func() {
-		otherUser := models.User{
-			UserID: models.UserID(uuid.New()),
+		otherUser := entity.User{
+			UserID: entity.UserID(uuid.New()),
 		}
 
 		err := s.db.UpsertUser(context.Background(), otherUser)
@@ -135,8 +136,8 @@ func (s *IntegrationTestSuite) TestGetWallet() {
 }
 
 func (s *IntegrationTestSuite) TestUpdateWallet() {
-	wallet := models.Wallet{
-		WalletID:   models.WalletID(uuid.New()),
+	wallet := entity.Wallet{
+		WalletID:   entity.WalletID(uuid.New()),
 		WalletName: "testWalletUpdate",
 		Balance:    300.0,
 		Currency:   "RUB",
@@ -147,17 +148,17 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 
 	wallet.UserID = existingUser.UserID
 
-	var createdWallet models.Wallet
+	var createdWallet entity.Wallet
 
 	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &wallet, &createdWallet, existingUser)
 
-	err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2`,
+	_, err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2`,
 		balanceTest, createdWallet.WalletID)
 	s.Require().NoError(err)
 
 	s.Run("user not found", func() {
-		nonExistentUser := models.User{
-			UserID: models.UserID(uuid.New()),
+		nonExistentUser := entity.User{
+			UserID: entity.UserID(uuid.New()),
 		}
 
 		uuidString := uuid.UUID(wallet.WalletID).String()
@@ -174,7 +175,7 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 	})
 
 	s.Run("name updated successfully", func() {
-		updatedWallet := models.WalletUpdate{
+		updatedWallet := entity.WalletUpdate{
 			WalletName: "updatedWalletName",
 			UserID:     createdWallet.UserID,
 			Currency:   createdWallet.Currency,
@@ -194,7 +195,7 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 	s.Run("currency updated successfully", func() {
 		cny := Currency{Name: "CNY", Value: 12.3}
 
-		updatedWallet := models.WalletUpdate{
+		updatedWallet := entity.WalletUpdate{
 			WalletName: createdWallet.WalletName,
 			UserID:     createdWallet.UserID,
 			Currency:   cny.Name,
@@ -216,7 +217,7 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 	s.Run("lowercase currency updated successfully", func() {
 		rsd := Currency{Name: "rsd", Value: 0.83}
 
-		updatedWallet := models.WalletUpdate{
+		updatedWallet := entity.WalletUpdate{
 			WalletName: createdWallet.WalletName,
 			UserID:     createdWallet.UserID,
 			Currency:   rsd.Name,
@@ -236,7 +237,7 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 	})
 
 	s.Run("unprocessible currency", func() {
-		updatedWallet := models.WalletUpdate{
+		updatedWallet := entity.WalletUpdate{
 			WalletName: createdWallet.WalletName,
 			UserID:     createdWallet.UserID,
 			Currency:   "NIO",
@@ -249,7 +250,7 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 	})
 
 	s.Run("nothing to update", func() {
-		updatedWallet := models.WalletUpdate{
+		updatedWallet := entity.WalletUpdate{
 			WalletName: createdWallet.WalletName,
 			UserID:     createdWallet.UserID,
 			Currency:   createdWallet.Currency,
@@ -265,15 +266,15 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 	})
 
 	s.Run("wallet belongs to another user", func() {
-		otherUser := models.User{
-			UserID: models.UserID(uuid.New()),
+		otherUser := entity.User{
+			UserID: entity.UserID(uuid.New()),
 		}
 
 		err := s.db.UpsertUser(context.Background(), otherUser)
 		s.Require().NoError(err)
 
-		updatedWallet := models.Wallet{
-			WalletID:   models.WalletID(uuid.New()),
+		updatedWallet := entity.Wallet{
+			WalletID:   entity.WalletID(uuid.New()),
 			UserID:     otherUser.UserID,
 			WalletName: "updatedWallet",
 			Currency:   "CHF",
@@ -287,9 +288,9 @@ func (s *IntegrationTestSuite) TestUpdateWallet() {
 }
 
 func (s *IntegrationTestSuite) TestDeleteWallet() {
-	wallet := models.Wallet{
-		WalletID:   models.WalletID(uuid.New()),
-		UserID:     models.UserID(uuid.New()),
+	wallet := entity.Wallet{
+		WalletID:   entity.WalletID(uuid.New()),
+		UserID:     entity.UserID(uuid.New()),
 		WalletName: "testWalletDelete",
 		Balance:    0.0,
 		Currency:   "RUB",
@@ -301,17 +302,20 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 
 	wallet.UserID = existingUser.UserID
 
-	var createdWallet models.Wallet
+	var createdWallet entity.Wallet
 
 	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &wallet, &createdWallet, existingUser)
 
 	s.Run("user not found", func() {
-		nonExistentUser := models.User{
-			UserID: models.UserID(uuid.New()),
+		nonExistentUser := entity.User{
+			UserID: entity.UserID(uuid.New()),
 		}
 
 		uuidString := uuid.UUID(wallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
+
+		log.Debug().Msg("----------------------------------")
+		log.Debug().Msgf("walletIDPath is: %s", walletIDPath)
 
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNotFound, &wallet, nil, nonExistentUser)
 	})
@@ -320,6 +324,9 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
+		log.Debug().Msg("----------------------------------")
+		log.Debug().Msgf("walletIDPath is: %s", walletIDPath)
+
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNoContent, nil, nil, existingUser)
 	})
 
@@ -327,12 +334,15 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 		walletIDNonExistent := uuid.New().String()
 		walletIDPath := walletPath + "/" + walletIDNonExistent
 
+		log.Debug().Msg("----------------------------------")
+		log.Debug().Msgf("walletIDPath is: %s", walletIDPath)
+
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNotFound, nil, nil, existingUser)
 	})
 
 	s.Run("balance is non-zero", func() {
-		walletNonZero := models.Wallet{
-			WalletID:   models.WalletID(uuid.New()),
+		walletNonZero := entity.Wallet{
+			WalletID:   entity.WalletID(uuid.New()),
 			WalletName: "testDeleteNonZeroBalanceWallet",
 			Balance:    0.0,
 			Currency:   "USD",
@@ -344,20 +354,23 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 
 		walletNonZero.UserID = existingUser.UserID
 
-		var createdWalletNonZero models.Wallet
+		var createdWalletNonZero entity.Wallet
 
 		s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletNonZero, &createdWalletNonZero, existingUser)
 
-		err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2`,
+		_, err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2`,
 			259.0, createdWalletNonZero.WalletID)
 		s.Require().NoError(err)
 
 		uuidString := uuid.UUID(createdWalletNonZero.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
+		log.Debug().Msg("----------------------------------")
+		log.Debug().Msgf("walletIDPath is: %s", walletIDPath)
+
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusBadRequest, nil, nil, existingUser)
 
-		var obtainedWallet models.Wallet
+		var obtainedWallet entity.Wallet
 
 		s.sendRequest(http.MethodGet, walletIDPath, http.StatusOK, nil, &obtainedWallet, existingUser)
 
@@ -366,8 +379,8 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 	})
 
 	s.Run("wallet belongs to another user", func() {
-		otherUser := models.User{
-			UserID: models.UserID(uuid.New()),
+		otherUser := entity.User{
+			UserID: entity.UserID(uuid.New()),
 		}
 
 		err := s.db.UpsertUser(context.Background(), otherUser)
@@ -375,6 +388,9 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 
 		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
+
+		log.Debug().Msg("----------------------------------")
+		log.Debug().Msgf("walletIDPath is: %s", walletIDPath)
 
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNotFound, nil, nil, otherUser)
 	})
@@ -387,85 +403,85 @@ func (s *IntegrationTestSuite) TestGetWallets() {
 	err = s.db.UpsertUser(context.Background(), existingUser)
 	s.Require().NoError(err)
 
-	var arrWallets []models.Wallet
+	var arrWallets []entity.Wallet
 
-	walletOne := models.Wallet{
-		WalletID:   models.WalletID(uuid.New()),
+	walletOne := entity.Wallet{
+		WalletID:   entity.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "FirstWallet",
 		Currency:   "RUB",
 	}
 	arrWallets = append(arrWallets, walletOne)
 
-	walletTwo := models.Wallet{
-		WalletID:   models.WalletID(uuid.New()),
+	walletTwo := entity.Wallet{
+		WalletID:   entity.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "SecondWallet",
 		Currency:   "TRY",
 	}
 	arrWallets = append(arrWallets, walletTwo)
 
-	walletThree := models.Wallet{
-		WalletID:   models.WalletID(uuid.New()),
+	walletThree := entity.Wallet{
+		WalletID:   entity.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "ThirdWallet",
 		Currency:   "CNY",
 	}
 	arrWallets = append(arrWallets, walletThree)
 
-	walletFour := models.Wallet{
-		WalletID:   models.WalletID(uuid.New()),
+	walletFour := entity.Wallet{
+		WalletID:   entity.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "FourthWallet",
 		Currency:   "HUF",
 	}
 	arrWallets = append(arrWallets, walletFour)
 
-	walletFive := models.Wallet{
-		WalletID:   models.WalletID(uuid.New()),
+	walletFive := entity.Wallet{
+		WalletID:   entity.WalletID(uuid.New()),
 		UserID:     existingUser.UserID,
 		WalletName: "FifthWallet",
 		Currency:   "KZT",
 	}
 	arrWallets = append(arrWallets, walletFive)
 
-	err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2 AND user_id = $3`,
+	_, err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2 AND user_id = $3`,
 		259.0, walletOne.WalletID, walletOne.UserID)
 	s.Require().NoError(err)
 
-	err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2 AND user_id = $3`,
+	_, err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2 AND user_id = $3`,
 		359.0, walletTwo.WalletID, walletTwo.UserID)
 	s.Require().NoError(err)
 
-	err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2 AND user_id = $3`,
+	_, err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2 AND user_id = $3`,
 		459.0, walletThree.WalletID, walletThree.UserID)
 	s.Require().NoError(err)
 
-	err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2 AND user_id = $3`,
+	_, err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2 AND user_id = $3`,
 		559.0, walletFour.WalletID, walletFour.UserID)
 	s.Require().NoError(err)
 
-	err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2 AND user_id = $3`,
+	_, err = s.db.Exec(context.Background(), `UPDATE wallets SET balance = $1 WHERE wallet_id = $2 AND user_id = $3`,
 		659.0, walletFive.WalletID, walletFive.UserID)
 	s.Require().NoError(err)
 
-	createdOne := models.Wallet{}
+	createdOne := entity.Wallet{}
 	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletOne, &createdOne, existingUser)
 
-	createdTwo := models.Wallet{}
+	createdTwo := entity.Wallet{}
 	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletTwo, &createdTwo, existingUser)
 
-	createdThree := models.Wallet{}
+	createdThree := entity.Wallet{}
 	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletThree, &createdThree, existingUser)
 
-	createdFour := models.Wallet{}
+	createdFour := entity.Wallet{}
 	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletFour, &createdFour, existingUser)
 
-	createdFive := models.Wallet{}
+	createdFive := entity.Wallet{}
 	s.sendRequest(http.MethodPost, walletPath, http.StatusCreated, &walletFive, &createdFive, existingUser)
 
 	s.Run("read successfully", func() {
-		var wallets []models.Wallet
+		var wallets []entity.Wallet
 
 		s.sendRequest(http.MethodGet, walletPath, http.StatusOK, nil, &wallets, existingUser)
 
@@ -473,7 +489,7 @@ func (s *IntegrationTestSuite) TestGetWallets() {
 	})
 
 	s.Run("sorted by name with limit 2", func() {
-		var wallets []models.Wallet
+		var wallets []entity.Wallet
 
 		someWalletPath := walletPath + "?sorting=wallet_name&limit=2"
 
@@ -485,7 +501,7 @@ func (s *IntegrationTestSuite) TestGetWallets() {
 	})
 
 	s.Run("sorted by name with limit 2 and offset 2", func() {
-		var wallets []models.Wallet
+		var wallets []entity.Wallet
 
 		someWalletPath := walletPath + "?sorting=wallet_name&limit=2&offset=2"
 
@@ -498,7 +514,7 @@ func (s *IntegrationTestSuite) TestGetWallets() {
 	})
 
 	s.Run("sorted by name with limit 2 and offset 2, descending true", func() {
-		var wallets []models.Wallet
+		var wallets []entity.Wallet
 
 		someWalletPath := walletPath + "?sorting=wallet_name&limit=2&offset=2&descending=true"
 
@@ -510,14 +526,14 @@ func (s *IntegrationTestSuite) TestGetWallets() {
 	})
 
 	s.Run("user does not own any wallets", func() {
-		otherUser := models.User{
-			UserID: models.UserID(uuid.New()),
+		otherUser := entity.User{
+			UserID: entity.UserID(uuid.New()),
 		}
 
 		err := s.db.UpsertUser(context.Background(), otherUser)
 		s.Require().NoError(err)
 
-		var wallets []models.Wallet
+		var wallets []entity.Wallet
 
 		s.sendRequest(http.MethodGet, walletPath, http.StatusOK, nil, &wallets, otherUser)
 

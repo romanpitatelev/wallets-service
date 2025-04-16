@@ -175,8 +175,6 @@ func TestDeposit(t *testing.T) {
 
 //nolint:funlen
 func TestWithdraw(t *testing.T) {
-	t.Parallel()
-
 	ctx := context.Background()
 	userID := entity.UserID(uuid.New())
 	walletID := entity.WalletID(uuid.New())
@@ -361,6 +359,7 @@ func TestWithdraw(t *testing.T) {
 			svc := &Service{
 				walletsStore:      mockWalletsStore,
 				transactionsStore: mockTransactionsStore,
+				tx:                mockTx,
 				xrClient:          mockXRClient,
 				producer:          mockTxProducer,
 				metrics:           getTestMetrics(),

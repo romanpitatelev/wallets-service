@@ -172,7 +172,11 @@ func (h *Handler) UpdateWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteWallet(w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msgf("r in DeleteWallet() is this: %v", r)
+
 	walletIDStr := chi.URLParam(r, "walletId")
+
+	log.Debug().Msgf("walletIDStr in DeleteWallet is: %s", walletIDStr)
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {

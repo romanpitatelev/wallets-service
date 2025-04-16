@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package xr;
 
-option go_package = "github.com/romanpitatelev/wallets-service/internal/xr-grpc";
+option go_package = "github.com/romanpitatelev/wallets-service/internal/xr/xr-grpc";
 
 service ExchangeRateService {
     rpc GetRate (RateRequest) returns (RateResponse);

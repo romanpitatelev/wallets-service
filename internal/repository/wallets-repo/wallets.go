@@ -64,7 +64,6 @@ RETURNING wallet_id, user_id, wallet_name, balance, currency, created_at, update
 	return createdWallet, nil
 }
 
-//nolint:ineffassign,wastedassign
 func (r *Repo) GetWallet(ctx context.Context, walletID entity.WalletID, userID entity.UserID) (entity.Wallet, error) {
 	var wallet entity.Wallet
 

@@ -3,6 +3,7 @@ package entity
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -149,7 +150,7 @@ func (t *Transaction) Validate() error {
 func unmarshalUUID(id *uuid.UUID, data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
-		return err
+		return fmt.Errorf("unmarshalling error: %w", err)
 	}
 
 	parsed, err := uuid.Parse(s)
@@ -158,6 +159,7 @@ func unmarshalUUID(id *uuid.UUID, data []byte) error {
 	}
 
 	*id = parsed
+
 	return nil
 }
 

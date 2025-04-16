@@ -162,10 +162,6 @@ type txtCtxKey string
 //nolint:gochecknoglobals
 var ctxKey txtCtxKey = "tx"
 
-func (d *DataStore) storeTx(ctx context.Context, tx pgx.Tx) context.Context {
-	return context.WithValue(ctx, ctxKey, tx)
-}
-
 func (d *DataStore) Query(ctx context.Context, sql string, arguments ...any) (pgx.Rows, error) {
 	res, err := d.pool.Query(ctx, sql, arguments...)
 	if err != nil {
@@ -192,4 +188,8 @@ func (d *DataStore) GetTXFromCtx(ctx context.Context) Transaction {
 	}
 
 	return tx
+}
+
+func (d *DataStore) storeTx(ctx context.Context, tx pgx.Tx) context.Context {
+	return context.WithValue(ctx, ctxKey, tx)
 }

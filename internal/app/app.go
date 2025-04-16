@@ -23,6 +23,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+//nolint:funlen
 func Run(cfg *configs.Config) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
