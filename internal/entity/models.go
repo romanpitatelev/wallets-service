@@ -175,14 +175,17 @@ func (t *TxID) UnmarshalText(data []byte) error {
 	return unmarshalUUID((*uuid.UUID)(t), data)
 }
 
+//nolint:wrapcheck
 func (u UserID) MarshalText() ([]byte, error) {
 	return json.Marshal(uuid.UUID(u).String())
 }
 
+//nolint:wrapcheck
 func (w WalletID) MarshalText() ([]byte, error) {
 	return json.Marshal(uuid.UUID(w).String())
 }
 
+//nolint:wrapcheck
 func (t TxID) MarshalText() ([]byte, error) {
 	return json.Marshal(uuid.UUID(t).String())
 }

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 
-	"github.com/go-chi/chi"
 	"github.com/google/uuid"
 	"github.com/romanpitatelev/wallets-service/internal/controller/rest/common"
 	"github.com/romanpitatelev/wallets-service/internal/entity"
@@ -76,7 +76,8 @@ func (h *Handler) CreateWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetWallet(w http.ResponseWriter, r *http.Request) {
-	walletIDStr := chi.URLParam(r, "walletId")
+
+	walletIDStr := getOtherValuesWalletID(r, "walletId")
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
@@ -124,7 +125,7 @@ func (h *Handler) GetWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UpdateWallet(w http.ResponseWriter, r *http.Request) {
-	walletIDStr := chi.URLParam(r, "walletId")
+	walletIDStr := getOtherValuesWalletID(r, "walletId")
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
@@ -172,25 +173,7 @@ func (h *Handler) UpdateWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteWallet(w http.ResponseWriter, r *http.Request) {
-	log.Debug().Msgf("r.Context is %v", r.Context())
-
-	rctx := chi.RouteContext(r.Context())
-	log.Debug().Msgf("RouteContext URLParam %v", rctx)
-
-	// fmt.Println("----------------------")
-	// log.Debug().Msgf("rctx.URLParams.Keys: %v", rctx.URLParams.Keys)
-	// log.Debug().Msgf("rctx.URLParams.Values: %v", rctx.URLParams.Values)
-
-	// for i := range rctx.URLParams.Keys {
-	// 	fmt.Println(i, "/", rctx.URLParams.Keys[i], "/")
-	// }
-	// for i := range rctx.URLParams.Values {
-	// 	fmt.Println(i, "/", rctx.URLParams.Values[i], "/")
-	// }
-
-	walletIDStr := chi.URLParam(r, "walletId")
-
-	log.Debug().Msgf("walletIDStr in DeleteWallet is: %s", walletIDStr)
+	walletIDStr := getOtherValuesWalletID(r, "walletId")
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
@@ -243,4 +226,30 @@ func (h *Handler) GetWallets(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+}
+
+func getOtherValuesWalletID(r *http.Request, identifier string) string {
+	reqValue := reflect.ValueOf(r).Elem()
+
+	otherValuesField := reqValue.FieldByName("otherValues")
+	if !otherValuesField.IsValid() {
+		return ""
+	}
+
+	if otherValuesField.Kind() != reflect.Map {
+		return ""
+	}
+
+	otherValuesMap := make(map[string]string)
+	iter := otherValuesField.MapRange()
+	for iter.Next() {
+		key := iter.Key()
+		value := iter.Value()
+
+		if key.Kind() == reflect.String && value.Kind() == reflect.String {
+			otherValuesMap[key.String()] = value.String()
+		}
+	}
+
+	return otherValuesMap[identifier]
 }

@@ -44,6 +44,7 @@ type transactionsHandler interface {
 	GetTransactions(w http.ResponseWriter, r *http.Request)
 }
 
+//nolint:whitespace
 func New(
 	cfg Config,
 	walletsHandler walletsHandler,

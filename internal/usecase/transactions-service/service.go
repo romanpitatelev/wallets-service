@@ -44,6 +44,7 @@ type Service struct {
 	metrics           *metrics
 }
 
+//nolint:whitespace
 func New(
 	walletsStore walletsStore,
 	tratransactionsStore transactionsStore,
