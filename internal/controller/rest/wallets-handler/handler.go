@@ -174,6 +174,20 @@ func (h *Handler) UpdateWallet(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteWallet(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msgf("r.Context is %v", r.Context())
 
+	rctx := chi.RouteContext(r.Context())
+	log.Debug().Msgf("RouteContext URLParam %v", rctx)
+
+	// fmt.Println("----------------------")
+	// log.Debug().Msgf("rctx.URLParams.Keys: %v", rctx.URLParams.Keys)
+	// log.Debug().Msgf("rctx.URLParams.Values: %v", rctx.URLParams.Values)
+
+	// for i := range rctx.URLParams.Keys {
+	// 	fmt.Println(i, "/", rctx.URLParams.Keys[i], "/")
+	// }
+	// for i := range rctx.URLParams.Values {
+	// 	fmt.Println(i, "/", rctx.URLParams.Values[i], "/")
+	// }
+
 	walletIDStr := chi.URLParam(r, "walletId")
 
 	log.Debug().Msgf("walletIDStr in DeleteWallet is: %s", walletIDStr)

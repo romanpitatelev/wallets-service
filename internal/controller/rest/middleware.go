@@ -27,6 +27,7 @@ var publicKeyData []byte
 //nolintlint:funlen
 func (s *Server) jwtAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 		header := r.Header.Get("Authorization")
 		if header == "" {
 			s.errorUnauthorizedResponse(w, entity.ErrInvalidToken)
