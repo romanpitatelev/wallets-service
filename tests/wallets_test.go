@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/romanpitatelev/wallets-service/internal/entity"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -314,9 +313,6 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 		uuidString := uuid.UUID(wallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
-		log.Debug().Msg("----------------------------------")
-		log.Debug().Msgf("walletIDPath is: %s", walletIDPath)
-
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNotFound, &wallet, nil, nonExistentUser)
 	})
 
@@ -324,18 +320,12 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
-		log.Debug().Msg("----------------------------------")
-		log.Debug().Msgf("walletIDPath is: %s", walletIDPath)
-
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNoContent, nil, nil, existingUser)
 	})
 
 	s.Run("wallet not found", func() {
 		walletIDNonExistent := uuid.New().String()
 		walletIDPath := walletPath + "/" + walletIDNonExistent
-
-		log.Debug().Msg("----------------------------------")
-		log.Debug().Msgf("walletIDPath is: %s", walletIDPath)
 
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNotFound, nil, nil, existingUser)
 	})
@@ -365,9 +355,6 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 		uuidString := uuid.UUID(createdWalletNonZero.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
 
-		log.Debug().Msg("----------------------------------")
-		log.Debug().Msgf("walletIDPath is: %s", walletIDPath)
-
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusBadRequest, nil, nil, existingUser)
 
 		var obtainedWallet entity.Wallet
@@ -388,9 +375,6 @@ func (s *IntegrationTestSuite) TestDeleteWallet() {
 
 		uuidString := uuid.UUID(createdWallet.WalletID).String()
 		walletIDPath := walletPath + "/" + uuidString
-
-		log.Debug().Msg("----------------------------------")
-		log.Debug().Msgf("walletIDPath is: %s", walletIDPath)
 
 		s.sendRequest(http.MethodDelete, walletIDPath, http.StatusNotFound, nil, nil, otherUser)
 	})

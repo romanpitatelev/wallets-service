@@ -178,6 +178,14 @@ func (h *Handler) DeleteWallet(w http.ResponseWriter, r *http.Request) {
 
 	log.Debug().Msgf("walletIDStr in DeleteWallet is: %s", walletIDStr)
 
+	if walletIDStr == "" {
+		if rctx := chi.RouteContext(r.Context()); rctx != nil {
+			walletIDStr = rctx.URLParam("walletId")
+		}
+	}
+
+	log.Debug().Msgf("walletIDStr in DeleteWallet is: %s", walletIDStr)
+
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
 		http.Error(w, "invalid wallet id", http.StatusBadRequest)

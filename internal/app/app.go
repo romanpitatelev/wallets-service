@@ -112,7 +112,7 @@ func Run(cfg *configs.Config) error {
 
 	errGr.Go(func() error {
 		if err := walletsService.Run(ctx); err != nil {
-			return fmt.Errorf("failed to run service: %w", err)
+			return fmt.Errorf("failed to run wallets service: %w", err)
 		}
 
 		return nil
