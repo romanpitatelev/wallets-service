@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"reflect"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/romanpitatelev/wallets-service/internal/controller/rest/common"
 	"github.com/romanpitatelev/wallets-service/internal/entity"
@@ -76,8 +77,8 @@ func (h *Handler) CreateWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetWallet(w http.ResponseWriter, r *http.Request) {
-
-	walletIDStr := getOtherValuesWalletID(r, "walletId")
+	// walletIDStr := getOtherValuesWalletID(r, "walletId")
+	walletIDStr := chi.URLParam(r, "walletId")
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
