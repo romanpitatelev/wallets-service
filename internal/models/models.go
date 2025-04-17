@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -149,7 +150,7 @@ func (t *Transaction) Validate() error {
 func unmarshalUUID(id *uuid.UUID, data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
-		return err
+		return fmt.Errorf("unmarshalling error: %w", err)
 	}
 
 	parsed, err := uuid.Parse(s)
@@ -158,6 +159,7 @@ func unmarshalUUID(id *uuid.UUID, data []byte) error {
 	}
 
 	*id = parsed
+
 	return nil
 }
 
@@ -173,14 +175,17 @@ func (t *TxID) UnmarshalText(data []byte) error {
 	return unmarshalUUID((*uuid.UUID)(t), data)
 }
 
+//nolint:wrapcheck
 func (u UserID) MarshalText() ([]byte, error) {
 	return json.Marshal(uuid.UUID(u).String())
 }
 
+//nolint:wrapcheck
 func (w WalletID) MarshalText() ([]byte, error) {
 	return json.Marshal(uuid.UUID(w).String())
 }
 
+//nolint:wrapcheck
 func (t TxID) MarshalText() ([]byte, error) {
 	return json.Marshal(uuid.UUID(t).String())
 }

@@ -14,7 +14,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const ReadHeaderTimeoutValue = 3
+const (
+	ReadHeaderTimeoutValue = 3
+	gracefulTimeout        = 10 * time.Second
+)
 
 type Config struct {
 	Port int
@@ -69,7 +72,11 @@ func (s *Server) Run(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 
-		if err := s.server.Shutdown(ctx); err != nil {
+		gracefulCtx, cancel := context.WithTimeout(context.Background(), gracefulTimeout)
+		defer cancel()
+
+		//nolint:contextcheck
+		if err := s.server.Shutdown(gracefulCtx); err != nil {
 			log.Warn().Err(err).Msg("failed to shutdown server")
 		}
 	}()

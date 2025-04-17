@@ -17,31 +17,35 @@ import (
 	"github.com/romanpitatelev/wallets-service/internal/rest"
 	"github.com/romanpitatelev/wallets-service/internal/service"
 	"github.com/romanpitatelev/wallets-service/internal/store"
-	xrclient "github.com/romanpitatelev/wallets-service/internal/xr/xr-http/xr-client"
-	xrserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-http/xr-server"
+	xrgrpcclient "github.com/romanpitatelev/wallets-service/internal/xr/xr-grpc/xr-client"
+	xrgrpcserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-grpc/xr-server"
+	xrhttpserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-http/xr-server"
 	"github.com/rs/zerolog/log"
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stretchr/testify/suite"
 )
 
 const (
-	pgDSN        = "postgresql://postgres:my_pass@localhost:5432/wallets_db"
-	port         = 5003
-	walletPath   = `/api/v1/wallets`
-	xrPort       = 2607
-	xrAddress    = "http://localhost:2607"
-	kafkaAddress = "localhost:9094"
+	pgDSN         = "postgresql://postgres:my_pass@localhost:5432/wallets_db"
+	port          = 5003
+	walletPath    = `/api/v1/wallets`
+	xrhttpPort    = 2607
+	xrgRPCPort    = 2608
+	xrAddress     = "http://localhost:2607"
+	xrgRPCAddress = "localhost:2608"
+	kafkaAddress  = "localhost:9094"
 )
 
 type IntegrationTestSuite struct {
 	suite.Suite
-	cancelFunc context.CancelFunc
-	db         *store.DataStore
-	service    *service.Service
-	server     *rest.Server
-	xrServer   *xrserver.Server
-	client     *xrclient.Client
-	txProducer *broker.Producer
+	cancelFunc   context.CancelFunc
+	db           *store.DataStore
+	service      *service.Service
+	server       *rest.Server
+	xrhttpServer *xrhttpserver.Server
+	xrgrpcServer *xrgrpcserver.Server
+	xrgrpcClient *xrgrpcclient.Client
+	txProducer   *broker.Producer
 }
 
 func (s *IntegrationTestSuite) SetupSuite() {
@@ -69,17 +73,25 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	s.txProducer, err = broker.NewProducer(broker.ProducerConfig{Addr: kafkaAddress})
 	s.Require().NoError(err)
 
-	s.xrServer = xrserver.New(xrPort)
+	s.xrhttpServer = xrhttpserver.New(xrhttpPort)
+	s.xrgrpcServer = xrgrpcserver.New(xrgrpcserver.Config{
+		ListenAddress: xrgRPCAddress,
+	})
 
 	log.Debug().Msg("xr server is compiled")
 
 	//nolint:testifylint
 	go func() {
-		err := s.xrServer.Run(ctx)
+		err := s.xrhttpServer.Run(ctx)
 		s.Require().NoError(err)
 	}()
 
-	s.client = xrclient.New(xrclient.Config{ServerAddress: xrAddress})
+	go func() {
+		err := s.xrgrpcServer.Run(ctx)
+		s.Require().NoError(err)
+	}()
+
+	s.xrgrpcClient, err = xrgrpcclient.New(xrgrpcclient.Config{Host: xrgRPCAddress})
 
 	log.Debug().Msg("xr client is ready")
 
@@ -89,7 +101,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 			PerformCheckPeriod:  0,
 		},
 		s.db,
-		s.client,
+		s.xrgrpcClient,
 		s.txProducer,
 	)
 
