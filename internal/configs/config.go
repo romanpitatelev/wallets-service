@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
@@ -111,5 +112,5 @@ func (c *Config) GetXRHTTPServerAddress() string {
 }
 
 func (c *Config) GetXRgRPCServerAddress() string {
-	return c.env.XRgRPCServerAddress
+	return strings.TrimPrefix(c.env.XRgRPCServerAddress, "http://")
 }

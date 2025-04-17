@@ -23,7 +23,8 @@ import (
 	xrgrpcclient "github.com/romanpitatelev/wallets-service/internal/repository/xr-grpc-client"
 	transactionsservice "github.com/romanpitatelev/wallets-service/internal/usecase/transactions-service"
 	walletsservice "github.com/romanpitatelev/wallets-service/internal/usecase/wallets-service"
-	xrserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-http/xr-server"
+	xrgrpcserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-grpc/xr-server"
+	xrhttpserver "github.com/romanpitatelev/wallets-service/internal/xr/xr-http/xr-server"
 	"github.com/rs/zerolog/log"
 	migrate "github.com/rubenv/sql-migrate"
 	"github.com/stretchr/testify/suite"
@@ -33,9 +34,10 @@ const (
 	pgDSN         = "postgresql://postgres:my_pass@localhost:5432/wallets_db"
 	port          = 5003
 	walletPath    = "/api/v1/wallets"
-	xrPort        = 2607
+	xrhttpPort    = 2607
+	xrgRPCPort    = 2608
 	xrAddress     = "http://localhost:2607"
-	xrgRPCAddress = "http://localhost:2608"
+	xrgRPCAddress = "localhost:2608"
 	kafkaAddress  = "localhost:9094"
 )
 
@@ -50,7 +52,8 @@ type IntegrationTestSuite struct {
 	walletshandler      *walletshandler.Handler
 	transactionshandler *transactionshandler.Handler
 	server              *rest.Server
-	xrServer            *xrserver.Server
+	xrhttpServer        *xrhttpserver.Server
+	xrgRPCServer        *xrgrpcserver.Server
 	xrRepo              *xrgrpcclient.Client
 	txProducer          *producer.Producer
 }
@@ -83,13 +86,22 @@ func (s *IntegrationTestSuite) SetupSuite() {
 	s.txProducer, err = producer.New(producer.ProducerConfig{Addr: kafkaAddress})
 	s.Require().NoError(err)
 
-	s.xrServer = xrserver.New(xrPort)
+	s.xrhttpServer = xrhttpserver.New(xrhttpPort)
+	s.xrgRPCServer = xrgrpcserver.New(xrgrpcserver.Config{
+		ListenAddress: xrgRPCAddress,
+	})
 
 	log.Debug().Msg("xr server is ready")
 
 	//nolint:testifylint
 	go func() {
-		err := s.xrServer.Run(ctx)
+		err := s.xrhttpServer.Run(ctx)
+		s.Require().NoError(err)
+	}()
+
+	//nolint:testifylint
+	go func() {
+		err := s.xrgRPCServer.Run(ctx)
 		s.Require().NoError(err)
 	}()
 

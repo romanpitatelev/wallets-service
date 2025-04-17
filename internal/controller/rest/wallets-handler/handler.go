@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -77,7 +76,6 @@ func (h *Handler) CreateWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetWallet(w http.ResponseWriter, r *http.Request) {
-	// walletIDStr := getOtherValuesWalletID(r, "walletId")
 	walletIDStr := chi.URLParam(r, "walletId")
 
 	walletID, err := uuid.Parse(walletIDStr)
@@ -126,7 +124,7 @@ func (h *Handler) GetWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UpdateWallet(w http.ResponseWriter, r *http.Request) {
-	walletIDStr := getOtherValuesWalletID(r, "walletId")
+	walletIDStr := chi.URLParam(r, "walletId")
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
@@ -174,7 +172,7 @@ func (h *Handler) UpdateWallet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteWallet(w http.ResponseWriter, r *http.Request) {
-	walletIDStr := getOtherValuesWalletID(r, "walletId")
+	walletIDStr := chi.URLParam(r, "walletId")
 
 	walletID, err := uuid.Parse(walletIDStr)
 	if err != nil {
@@ -227,30 +225,4 @@ func (h *Handler) GetWallets(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-}
-
-func getOtherValuesWalletID(r *http.Request, identifier string) string {
-	reqValue := reflect.ValueOf(r).Elem()
-
-	otherValuesField := reqValue.FieldByName("otherValues")
-	if !otherValuesField.IsValid() {
-		return ""
-	}
-
-	if otherValuesField.Kind() != reflect.Map {
-		return ""
-	}
-
-	otherValuesMap := make(map[string]string)
-	iter := otherValuesField.MapRange()
-	for iter.Next() {
-		key := iter.Key()
-		value := iter.Value()
-
-		if key.Kind() == reflect.String && value.Kind() == reflect.String {
-			otherValuesMap[key.String()] = value.String()
-		}
-	}
-
-	return otherValuesMap[identifier]
 }

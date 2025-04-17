@@ -154,8 +154,6 @@ func (h *Handler) Transfer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetTransactions(w http.ResponseWriter, r *http.Request) {
-	request := common.ParseGetRequest(r)
-	ctx := r.Context()
 	walletIDStr := chi.URLParam(r, "walletId")
 
 	walletID, err := uuid.Parse(walletIDStr)
@@ -164,6 +162,9 @@ func (h *Handler) GetTransactions(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
+
+	request := common.ParseGetRequest(r)
+	ctx := r.Context()
 
 	userInfo := common.GetUserInfo(ctx)
 

@@ -3,7 +3,9 @@ package xrgrpcclient
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/romanpitatelev/wallets-service/internal/entity"
 	xrgrpc "github.com/romanpitatelev/wallets-service/internal/xr/xr-grpc/gen/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -36,6 +38,10 @@ func (c *Client) GetRate(ctx context.Context, from string, to string) (float64, 
 		ToCurrency:   to,
 	})
 	if err != nil {
+		if strings.Contains(err.Error(), "wrong currency") {
+			return 0.0, entity.ErrWrongCurrency
+		}
+
 		return 0.0, fmt.Errorf("gRPC client error: %w", err)
 	}
 
