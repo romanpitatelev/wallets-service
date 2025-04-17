@@ -86,6 +86,7 @@ func (s *IntegrationTestSuite) SetupSuite() {
 		s.Require().NoError(err)
 	}()
 
+	//nolint:testifylint
 	go func() {
 		err := s.xrgrpcServer.Run(ctx)
 		s.Require().NoError(err)

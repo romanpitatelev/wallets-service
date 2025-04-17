@@ -28,8 +28,8 @@ type Config struct {
 	Dsn string
 }
 
-func New(ctx context.Context, conf Config) (*DataStore, error) {
-	pool, err := pgxpool.New(ctx, conf.Dsn)
+func New(ctx context.Context, cfg Config) (*DataStore, error) {
+	pool, err := pgxpool.New(ctx, cfg.Dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -42,7 +42,7 @@ func New(ctx context.Context, conf Config) (*DataStore, error) {
 
 	return &DataStore{
 		pool: pool,
-		dsn:  conf.Dsn,
+		dsn:  cfg.Dsn,
 	}, nil
 }
 

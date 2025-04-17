@@ -31,16 +31,16 @@ type Server struct {
 	metrics *metrics
 }
 
-func New(conf Config, service service, key *rsa.PublicKey) *Server {
+func New(cfg Config, service service, key *rsa.PublicKey) *Server {
 	router := chi.NewRouter()
 	s := &Server{
 		service: service,
 		server: &http.Server{
-			Addr:              fmt.Sprintf(":%d", conf.Port),
+			Addr:              fmt.Sprintf(":%d", cfg.Port),
 			Handler:           router,
 			ReadHeaderTimeout: ReadHeaderTimeoutValue * time.Second,
 		},
-		port:    conf.Port,
+		port:    cfg.Port,
 		key:     key,
 		metrics: newMetrics(),
 	}

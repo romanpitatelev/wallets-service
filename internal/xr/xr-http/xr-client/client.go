@@ -13,28 +13,26 @@ import (
 const route = "/api/v1/xr?from=%v&to=%v"
 
 type Client struct {
-	conf Config
+	cfg Config
 }
 
 type Config struct {
 	ServerAddress string
 }
 
-func New(conf Config) *Client {
+func New(cfg Config) *Client {
 	return &Client{
-		conf: conf,
+		cfg: cfg,
 	}
 }
 
 func (c *Client) GetRate(ctx context.Context, from string, to string) (float64, error) {
-	url := c.conf.ServerAddress + fmt.Sprintf(route, from, to)
+	url := c.cfg.ServerAddress + fmt.Sprintf(route, from, to)
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return 0.0, fmt.Errorf("xr client: failed to create request: %w", err)
 	}
-
-	//	log.Info().Msgf("this request is from client GetRate function: %v", request)
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {

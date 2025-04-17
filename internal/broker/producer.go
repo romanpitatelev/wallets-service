@@ -18,11 +18,11 @@ type Producer struct {
 	producer sarama.SyncProducer
 }
 
-func NewProducer(conf ProducerConfig) (*Producer, error) {
+func NewProducer(cfg ProducerConfig) (*Producer, error) {
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
 
-	producer, err := sarama.NewSyncProducer([]string{conf.Addr}, config)
+	producer, err := sarama.NewSyncProducer([]string{cfg.Addr}, config)
 	if err != nil {
 		return nil, fmt.Errorf("error creating producer: %w", err)
 	}

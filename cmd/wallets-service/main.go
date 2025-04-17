@@ -22,9 +22,9 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	conf := configs.New()
+	cfg := configs.New()
 
-	pgStore, err := store.New(ctx, store.Config{Dsn: conf.GetPostgresDSN()})
+	pgStore, err := store.New(ctx, store.Config{Dsn: cfg.GetPostgresDSN()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to connect to database")
 	}
@@ -35,7 +35,7 @@ func main() {
 
 	log.Info().Msg("successful migration")
 
-	kafkaConsumer, err := broker.NewConsumer(pgStore, broker.ConsumerConfig{Addr: conf.GetKafkaAddress()})
+	kafkaConsumer, err := broker.NewConsumer(pgStore, broker.ConsumerConfig{Addr: cfg.GetKafkaAddress()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to create kafka consumer")
 	}
@@ -48,7 +48,7 @@ func main() {
 
 	log.Info().Msg("kafka consumer created")
 
-	kafkaTxProducer, err := broker.NewProducer(broker.ProducerConfig{Addr: conf.GetKafkaAddress()})
+	kafkaTxProducer, err := broker.NewProducer(broker.ProducerConfig{Addr: cfg.GetKafkaAddress()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to create kafka transactions producer")
 	}
@@ -61,22 +61,22 @@ func main() {
 		}
 	}()
 
-	xrClient, err := xrgrpcclient.New(xrgrpcclient.Config{Host: conf.GetXRgRPCServerAddress()})
+	xrClient, err := xrgrpcclient.New(xrgrpcclient.Config{Host: cfg.GetXRgRPCServerAddress()})
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to create xr gRPC client")
 	}
 
 	svc := service.New(
 		service.Config{
-			StaleWalletDuration: conf.GetStaleWalletDuration(),
-			PerformCheckPeriod:  conf.GetPerformCheckPeriod(),
+			StaleWalletDuration: cfg.GetStaleWalletDuration(),
+			PerformCheckPeriod:  cfg.GetPerformCheckPeriod(),
 		},
 		pgStore,
 		xrClient,
 		kafkaTxProducer,
 	)
 
-	server := rest.New(rest.Config{Port: conf.GetAppPort()}, svc, rest.GetPublicKey())
+	server := rest.New(rest.Config{Port: cfg.GetAppPort()}, svc, rest.GetPublicKey())
 
 	errGr, ctx := errgroup.WithContext(ctx)
 
