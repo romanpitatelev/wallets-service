@@ -1,6 +1,6 @@
-PROTO_PATH=internal/xr-grpc
+PROTO_PATH=api/grpc/xr/v1
 PROTO_FILE=xr.proto
-OUT_DIR=internal/xr-grpc/gen/go
+OUT_DIR=internal/xr/xr-grpc/gen/go
 
 run:
 	@echo 'Running the project ...'
